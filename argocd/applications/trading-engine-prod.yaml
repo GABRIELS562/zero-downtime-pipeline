@@ -1,0 +1,292 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trading-engine-prod
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: trading-engine
+    app.kubernetes.io/component: trading-core
+    environment: production
+    business-criticality: critical
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/business-impact: "critical"
+    argocd.argoproj.io/max-latency-ms: "50"
+    argocd.argoproj.io/revenue-per-minute: "1000"
+    argocd.argoproj.io/success-rate-threshold: "99.99"
+    argocd.argoproj.io/canary-analysis: "enabled"
+    argocd.argoproj.io/progressive-delivery: "blue-green"
+    argocd.argoproj.io/rollback-enabled: "true"
+    argocd.argoproj.io/require-approval: "true"
+    notifications.argoproj.io/subscribe.on-sync-succeeded.slack: "trading-prod"
+    notifications.argoproj.io/subscribe.on-sync-failed.slack: "trading-critical"
+    notifications.argoproj.io/subscribe.on-health-degraded.slack: "trading-critical"
+    notifications.argoproj.io/subscribe.on-sync-succeeded.email: "trading-leads@company.com"
+    notifications.argoproj.io/subscribe.on-sync-failed.email: "trading-critical@company.com"
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: trading-platform
+  
+  source:
+    repoURL: https://github.com/company/trading-platform.git
+    targetRevision: production
+    path: helm/trading-engine
+    helm:
+      valueFiles:
+      - values-prod.yaml
+      parameters:
+      - name: image.tag
+        value: "prod-v1.2.3"
+      - name: replicaCount
+        value: "6"
+      - name: resources.requests.memory
+        value: "2Gi"
+      - name: resources.requests.cpu
+        value: "1000m"
+      - name: resources.limits.memory
+        value: "4Gi"
+      - name: resources.limits.cpu
+        value: "2000m"
+      - name: autoscaling.enabled
+        value: "true"
+      - name: autoscaling.minReplicas
+        value: "6"
+      - name: autoscaling.maxReplicas
+        value: "20"
+      - name: monitoring.enabled
+        value: "true"
+      - name: tracing.enabled
+        value: "true"
+      - name: logging.level
+        value: "WARN"
+      - name: progressiveDelivery.enabled
+        value: "true"
+      - name: progressiveDelivery.strategy
+        value: "blue-green"
+      - name: healthChecks.enabled
+        value: "true"
+      - name: businessMetrics.enabled
+        value: "true"
+      - name: rollbackPolicy.enabled
+        value: "true"
+      - name: rollbackPolicy.revenueThreshold
+        value: "10000"
+      - name: rollbackPolicy.latencyThreshold
+        value: "50"
+      - name: rollbackPolicy.errorRateThreshold
+        value: "0.01"
+      - name: security.networkPolicy.enabled
+        value: "true"
+      - name: security.podSecurityPolicy.enabled
+        value: "true"
+      - name: compliance.sox.enabled
+        value: "true"
+      - name: compliance.mifid.enabled
+        value: "true"
+  
+  destination:
+    server: https://trading-prod-cluster.company.com
+    namespace: trading-prod
+  
+  syncPolicy:
+    # Manual sync required for production
+    automated: null
+    syncOptions:
+    - CreateNamespace=true
+    - PrunePropagationPolicy=foreground
+    - PruneLast=true
+    - ApplyOutOfSyncOnly=true
+    - RespectIgnoreDifferences=true
+    - ServerSideApply=true
+    - Validate=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 10m
+    managedNamespaceMetadata:
+      labels:
+        environment: production
+        compliance-framework: sox,mifid-ii,dodd-frank
+        business-criticality: critical
+        network-policy: strict
+      annotations:
+        security.company.com/audit-required: "true"
+        compliance.company.com/sox-compliant: "true"
+  
+  revisionHistoryLimit: 50
+  
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/replicas
+  - group: argoproj.io
+    kind: Rollout
+    jsonPointers:
+    - /spec/replicas
+    - /status
+  - group: autoscaling
+    kind: HorizontalPodAutoscaler
+    jsonPointers:
+    - /spec/targetCPUUtilizationPercentage
+    - /status
+  
+  # Comprehensive operation hooks for production
+  operation:
+    sync:
+      hooks:
+      - name: pre-sync-business-validation
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "=== Pre-Sync Business Validation ==="
+          # Check trading hours
+          current_hour=$(date +%H)
+          if [ $current_hour -ge 13 ] && [ $current_hour -le 20 ]; then
+            echo "ERROR: Cannot deploy during trading hours (1:30 PM - 8:00 PM EST)"
+            exit 1
+          fi
+          
+          # Validate market conditions
+          kubectl exec -n trading-prod deployment/market-data -- curl -f http://localhost:8080/market/status
+          
+          # Check system health
+          kubectl exec -n trading-prod deployment/trading-engine -- curl -f http://localhost:8080/health/deep
+          
+          # Validate business metrics baseline
+          kubectl exec -n trading-prod deployment/trading-engine -- curl -f http://localhost:8080/metrics/business/baseline
+          
+          echo "Pre-sync validation passed"
+      
+      - name: pre-sync-infrastructure-check
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "=== Infrastructure Readiness Check ==="
+          # Check cluster resources
+          kubectl top nodes
+          kubectl get nodes -o wide
+          
+          # Validate persistent volumes
+          kubectl get pv,pvc -n trading-prod
+          
+          # Check network policies
+          kubectl get networkpolicy -n trading-prod
+          
+          # Validate service mesh
+          kubectl get virtualservice,destinationrule -n trading-prod
+          
+          echo "Infrastructure check passed"
+      
+      - name: canary-deployment-validation
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "=== Canary Deployment Validation ==="
+          # Wait for canary rollout
+          kubectl rollout status rollout/trading-engine -n trading-prod --timeout=600s
+          
+          # Validate canary health
+          kubectl exec -n trading-prod deployment/trading-engine-canary -- curl -f http://localhost:8080/health
+          
+          # Check canary metrics for 5 minutes
+          for i in {1..10}; do
+            echo "Canary validation check $i/10"
+            
+            # Check latency
+            latency=$(kubectl exec -n trading-prod deployment/trading-engine-canary -- curl -s http://localhost:8080/metrics/latency | jq '.p99')
+            if [ $(echo "$latency > 50" | bc) -eq 1 ]; then
+              echo "ERROR: Canary latency $latency ms exceeds 50ms threshold"
+              exit 1
+            fi
+            
+            # Check error rate
+            error_rate=$(kubectl exec -n trading-prod deployment/trading-engine-canary -- curl -s http://localhost:8080/metrics/errors | jq '.rate')
+            if [ $(echo "$error_rate > 0.01" | bc) -eq 1 ]; then
+              echo "ERROR: Canary error rate $error_rate exceeds 0.01% threshold"
+              exit 1
+            fi
+            
+            # Check business metrics
+            revenue_rate=$(kubectl exec -n trading-prod deployment/trading-engine-canary -- curl -s http://localhost:8080/metrics/business/revenue | jq '.per_minute')
+            if [ $(echo "$revenue_rate < 1000" | bc) -eq 1 ]; then
+              echo "ERROR: Canary revenue rate $revenue_rate below $1000/min threshold"
+              exit 1
+            fi
+            
+            sleep 30
+          done
+          
+          echo "Canary validation passed"
+      
+      - name: post-sync-business-validation
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "=== Post-Sync Business Validation ==="
+          # Wait for full rollout
+          kubectl rollout status rollout/trading-engine -n trading-prod --timeout=600s
+          
+          # Comprehensive health check
+          kubectl exec -n trading-prod deployment/trading-engine -- curl -f http://localhost:8080/health/comprehensive
+          
+          # Validate end-to-end trading flow
+          kubectl exec -n trading-prod deployment/trading-engine -- curl -f -X POST http://localhost:8080/test/e2e-trade
+          
+          # Check market data connectivity
+          kubectl exec -n trading-prod deployment/trading-engine -- curl -f http://localhost:8080/market-data/connectivity
+          
+          # Validate risk management integration
+          kubectl exec -n trading-prod deployment/trading-engine -- curl -f http://localhost:8080/risk/validation
+          
+          # Monitor for 10 minutes post-deployment
+          for i in {1..20}; do
+            echo "Post-deployment monitoring $i/20"
+            
+            # Business metrics validation
+            kubectl exec -n trading-prod deployment/trading-engine -- curl -f http://localhost:8080/metrics/business/validate
+            
+            sleep 30
+          done
+          
+          echo "Post-sync validation completed successfully"
+      
+      - name: post-sync-notification
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "=== Deployment Notification ==="
+          # Send success notification
+          curl -X POST $SLACK_WEBHOOK_URL -H 'Content-type: application/json' \
+            --data '{"text":"✅ Production deployment completed successfully for trading-engine-prod"}'
+          
+          # Log to audit system
+          curl -X POST $AUDIT_API_URL/deployment-complete \
+            -H 'Content-type: application/json' \
+            --data "{\"application\":\"trading-engine-prod\",\"timestamp\":\"$(date -Iseconds)\",\"status\":\"success\"}"
+  
+  info:
+  - name: 'Business Impact'
+    value: 'CRITICAL - Production trading engine handling $1000/min revenue'
+  - name: 'SLA Target'
+    value: '99.99% uptime, <50ms latency, 99.99% success rate'
+  - name: 'Owner'
+    value: 'Trading Platform Team'
+  - name: 'On-Call'
+    value: 'trading-oncall@company.com'
+  - name: 'Deployment Window'
+    value: 'Outside trading hours (8:01 PM - 1:29 PM EST)'
+  - name: 'Approval Required'
+    value: 'Yes - Senior Engineer + Business Approval'
+  - name: 'Progressive Delivery'
+    value: 'Blue-Green with 10-minute validation window'
+  - name: 'Rollback Policy'
+    value: 'Automated on revenue loss >$10K/min or latency >50ms'

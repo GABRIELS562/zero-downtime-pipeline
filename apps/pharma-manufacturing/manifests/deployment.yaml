@@ -1,0 +1,491 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pharma-manufacturing-app
+  namespace: pharma-prod
+  labels:
+    app: pharma-manufacturing
+    version: v1
+    tier: production
+    compliance: fda-21cfr11
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    pharma.fda/validation-required: "true"
+    pharma.fda/gmp-compliant: "true"
+    pharma.fda/audit-trail: "enabled"
+    pharma.fda/batch-integrity: "required"
+spec:
+  replicas: 4
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: pharma-manufacturing
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: pharma-manufacturing
+        version: v1
+        tier: production
+        compliance: fda-21cfr11
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+        pharma.fda/deployment-timestamp: "{{ .Values.deploymentTimestamp }}"
+        pharma.fda/validated-by: "{{ .Values.validatedBy }}"
+        pharma.fda/change-control-number: "{{ .Values.changeControlNumber }}"
+    spec:
+      serviceAccountName: pharma-manufacturing-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 2001
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - pharma-manufacturing
+            topologyKey: "kubernetes.io/hostname"
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-type
+                operator: In
+                values:
+                - manufacturing-control
+              - key: compliance-zone
+                operator: In
+                values:
+                - fda-validated
+      initContainers:
+      - name: compliance-validator
+        image: pharma-compliance-validator:latest
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          echo "Validating FDA compliance requirements..."
+          /usr/local/bin/validate-21cfr11
+          /usr/local/bin/validate-gmp-requirements
+          /usr/local/bin/validate-batch-integrity
+          echo "Compliance validation passed"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        volumeMounts:
+        - name: compliance-config
+          mountPath: /etc/compliance
+          readOnly: true
+        - name: audit-logs
+          mountPath: /var/log/audit
+      containers:
+      - name: manufacturing-control
+        image: pharma-manufacturing-control:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        - containerPort: 8081
+          name: health
+          protocol: TCP
+        - containerPort: 9090
+          name: metrics
+          protocol: TCP
+        - containerPort: 8082
+          name: scada
+          protocol: TCP
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: MANUFACTURING_LINE_ID
+          valueFrom:
+            configMapKeyRef:
+              name: pharma-config
+              key: manufacturing-line-id
+        - name: BATCH_CONTROL_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: pharma-config
+              key: batch-control-endpoint
+        - name: EFFICIENCY_THRESHOLD
+          value: "98.0"
+        - name: TEMP_THRESHOLD_MIN
+          value: "18.0"
+        - name: TEMP_THRESHOLD_MAX
+          value: "25.0"
+        - name: PRESSURE_THRESHOLD_MIN
+          value: "0.8"
+        - name: PRESSURE_THRESHOLD_MAX
+          value: "2.5"
+        - name: FDA_AUDIT_ENABLED
+          value: "true"
+        - name: GMP_VALIDATION_ENABLED
+          value: "true"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8081
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+          successThreshold: 1
+        startupProbe:
+          httpGet:
+            path: /health/startup
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 20
+          successThreshold: 1
+        volumeMounts:
+        - name: pharma-config
+          mountPath: /etc/pharma
+          readOnly: true
+        - name: audit-logs
+          mountPath: /var/log/audit
+        - name: batch-data
+          mountPath: /var/data/batches
+        - name: temp-storage
+          mountPath: /tmp
+      - name: sensor-monitor
+        image: pharma-sensor-monitor:latest
+        ports:
+        - containerPort: 8083
+          name: sensor-api
+        env:
+        - name: SENSOR_ENDPOINTS
+          valueFrom:
+            configMapKeyRef:
+              name: pharma-config
+              key: sensor-endpoints
+        - name: MONITORING_INTERVAL_SEC
+          value: "5"
+        - name: ALERT_THRESHOLD_TEMP
+          value: "1.0"
+        - name: ALERT_THRESHOLD_PRESSURE
+          value: "0.1"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "400m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8083
+          periodSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /sensors/status
+            port: 8083
+          periodSeconds: 10
+          timeoutSeconds: 5
+        volumeMounts:
+        - name: sensor-config
+          mountPath: /etc/sensors
+          readOnly: true
+        - name: audit-logs
+          mountPath: /var/log/audit
+      - name: batch-integrity-checker
+        image: pharma-batch-integrity:latest
+        ports:
+        - containerPort: 8084
+          name: batch-api
+        env:
+        - name: BATCH_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: pharma-secrets
+              key: batch-database-url
+        - name: INTEGRITY_CHECK_INTERVAL_SEC
+          value: "30"
+        - name: BATCH_VALIDATION_ENABLED
+          value: "true"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "300m"
+          limits:
+            memory: "1Gi"
+            cpu: "600m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8084
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /batch/validation/status
+            port: 8084
+          periodSeconds: 15
+          timeoutSeconds: 10
+        volumeMounts:
+        - name: batch-config
+          mountPath: /etc/batch
+          readOnly: true
+        - name: audit-logs
+          mountPath: /var/log/audit
+        - name: batch-data
+          mountPath: /var/data/batches
+      - name: audit-logger
+        image: pharma-audit-logger:latest
+        ports:
+        - containerPort: 8085
+          name: audit-api
+        env:
+        - name: AUDIT_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: pharma-secrets
+              key: audit-database-url
+        - name: FDA_COMPLIANCE_MODE
+          value: "21CFR11"
+        - name: DIGITAL_SIGNATURE_REQUIRED
+          value: "true"
+        - name: AUDIT_RETENTION_DAYS
+          value: "2555"  # 7 years
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "150m"
+          limits:
+            memory: "512Mi"
+            cpu: "300m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8085
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /audit/status
+            port: 8085
+          periodSeconds: 15
+        volumeMounts:
+        - name: audit-config
+          mountPath: /etc/audit
+          readOnly: true
+        - name: audit-logs
+          mountPath: /var/log/audit
+        - name: digital-signatures
+          mountPath: /var/signatures
+          readOnly: true
+      volumes:
+      - name: pharma-config
+        configMap:
+          name: pharma-config
+      - name: sensor-config
+        configMap:
+          name: sensor-config
+      - name: batch-config
+        configMap:
+          name: batch-config
+      - name: audit-config
+        configMap:
+          name: audit-config
+      - name: compliance-config
+        configMap:
+          name: compliance-config
+      - name: digital-signatures
+        secret:
+          secretName: digital-signatures
+          defaultMode: 0400
+      - name: audit-logs
+        persistentVolumeClaim:
+          claimName: audit-logs-pvc
+      - name: batch-data
+        persistentVolumeClaim:
+          claimName: batch-data-pvc
+      - name: temp-storage
+        emptyDir:
+          sizeLimit: 2Gi
+      terminationGracePeriodSeconds: 120
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pharma-config
+  namespace: pharma-prod
+  labels:
+    app: pharma-manufacturing
+    compliance: fda-21cfr11
+data:
+  manufacturing-line-id: "LINE-001-PHARMA-PROD"
+  batch-control-endpoint: "http://batch-control.pharma-prod.svc.cluster.local:8080"
+  manufacturing-schedule: |
+    {
+      "production_windows": [
+        {
+          "start": "06:00",
+          "end": "18:00",
+          "timezone": "UTC",
+          "description": "Primary production window"
+        },
+        {
+          "start": "20:00", 
+          "end": "04:00",
+          "timezone": "UTC",
+          "description": "Secondary production window"
+        }
+      ],
+      "maintenance_windows": [
+        {
+          "start": "18:00",
+          "end": "20:00",
+          "timezone": "UTC",
+          "description": "Daily maintenance window"
+        }
+      ]
+    }
+  sensor-endpoints: |
+    {
+      "temperature_sensors": [
+        {
+          "id": "TEMP-001",
+          "name": "Reactor Temperature",
+          "endpoint": "http://sensor-gateway:8080/temp/reactor",
+          "min_value": 18.0,
+          "max_value": 25.0,
+          "critical": true
+        },
+        {
+          "id": "TEMP-002", 
+          "name": "Storage Temperature",
+          "endpoint": "http://sensor-gateway:8080/temp/storage",
+          "min_value": 2.0,
+          "max_value": 8.0,
+          "critical": true
+        }
+      ],
+      "pressure_sensors": [
+        {
+          "id": "PRESS-001",
+          "name": "Reactor Pressure",
+          "endpoint": "http://sensor-gateway:8080/pressure/reactor",
+          "min_value": 0.8,
+          "max_value": 2.5,
+          "critical": true
+        },
+        {
+          "id": "PRESS-002",
+          "name": "Pipeline Pressure",
+          "endpoint": "http://sensor-gateway:8080/pressure/pipeline",
+          "min_value": 1.0,
+          "max_value": 3.0,
+          "critical": false
+        }
+      ]
+    }
+  efficiency-thresholds: |
+    {
+      "minimum_efficiency": 98.0,
+      "warning_threshold": 98.5,
+      "optimal_threshold": 99.0,
+      "measurement_interval_minutes": 15,
+      "alert_conditions": {
+        "efficiency_below_minimum": {
+          "severity": "critical",
+          "action": "stop_production"
+        },
+        "efficiency_below_warning": {
+          "severity": "warning", 
+          "action": "notify_operators"
+        }
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: compliance-config
+  namespace: pharma-prod
+  labels:
+    app: pharma-manufacturing
+    compliance: fda-21cfr11
+data:
+  fda-21cfr11-requirements: |
+    {
+      "electronic_records": {
+        "digital_signatures_required": true,
+        "audit_trail_required": true,
+        "record_retention_years": 7,
+        "access_control_required": true
+      },
+      "validation_requirements": {
+        "installation_qualification": true,
+        "operational_qualification": true,
+        "performance_qualification": true,
+        "change_control_required": true
+      },
+      "gmp_requirements": {
+        "batch_records_required": true,
+        "environmental_monitoring": true,
+        "equipment_qualification": true,
+        "personnel_training_records": true
+      }
+    }
+  deployment-validation-checklist: |
+    {
+      "pre_deployment": [
+        "Verify change control documentation",
+        "Validate digital signatures",
+        "Check audit trail integrity",
+        "Verify user access controls",
+        "Validate backup procedures"
+      ],
+      "during_deployment": [
+        "Monitor manufacturing line efficiency",
+        "Track sensor readings",
+        "Verify batch integrity",
+        "Log all deployment activities",
+        "Maintain audit trail"
+      ],
+      "post_deployment": [
+        "Perform system validation",
+        "Generate compliance report",
+        "Update audit records",
+        "Verify data integrity",
+        "Document lessons learned"
+      ]
+    }

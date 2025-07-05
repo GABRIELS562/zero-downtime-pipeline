@@ -1,0 +1,360 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: manufacturing-control-prod
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: manufacturing-control
+    app.kubernetes.io/component: control-system
+    environment: production
+    business-criticality: critical
+    compliance-framework: fda-21cfr11
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/business-impact: "critical"
+    argocd.argoproj.io/efficiency-threshold: "98"
+    argocd.argoproj.io/batch-cost-per-failure: "50000"
+    argocd.argoproj.io/gmp-compliant: "true"
+    argocd.argoproj.io/fda-validated: "true"
+    argocd.argoproj.io/progressive-delivery: "canary"
+    argocd.argoproj.io/rollback-enabled: "true"
+    argocd.argoproj.io/require-validation: "true"
+    notifications.argoproj.io/subscribe.on-sync-succeeded.slack: "manufacturing-prod"
+    notifications.argoproj.io/subscribe.on-sync-failed.slack: "manufacturing-critical"
+    notifications.argoproj.io/subscribe.on-health-degraded.slack: "manufacturing-critical"
+    notifications.argoproj.io/subscribe.on-sync-succeeded.email: "manufacturing-leads@company.com"
+    notifications.argoproj.io/subscribe.on-sync-failed.email: "regulatory-alerts@company.com"
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: pharma-manufacturing
+  
+  source:
+    repoURL: https://github.com/company/pharma-manufacturing.git
+    targetRevision: validated-release
+    path: helm/manufacturing-control
+    helm:
+      valueFiles:
+      - values-prod.yaml
+      - values-fda-compliance.yaml
+      parameters:
+      - name: image.tag
+        value: "fda-validated-v2.1.0"
+      - name: replicaCount
+        value: "4"  # High availability for critical manufacturing
+      - name: resources.requests.memory
+        value: "2Gi"
+      - name: resources.requests.cpu
+        value: "1000m"
+      - name: resources.limits.memory
+        value: "4Gi"
+      - name: resources.limits.cpu
+        value: "2000m"
+      - name: autoscaling.enabled
+        value: "false"  # Fixed replicas for manufacturing consistency
+      - name: monitoring.enabled
+        value: "true"
+      - name: logging.level
+        value: "INFO"
+      - name: logging.audit.enabled
+        value: "true"
+      - name: progressiveDelivery.enabled
+        value: "true"
+      - name: progressiveDelivery.strategy
+        value: "canary"
+      - name: healthChecks.enabled
+        value: "true"
+      - name: businessMetrics.enabled
+        value: "true"
+      - name: rollbackPolicy.enabled
+        value: "true"
+      - name: rollbackPolicy.efficiencyThreshold
+        value: "98"
+      - name: rollbackPolicy.batchFailureCost
+        value: "50000"
+      - name: compliance.fda21cfr11.enabled
+        value: "true"
+      - name: compliance.gmp.enabled
+        value: "true"
+      - name: compliance.iso13485.enabled
+        value: "true"
+      - name: security.encryption.enabled
+        value: "true"
+      - name: security.auditTrail.enabled
+        value: "true"
+      - name: environmentalMonitoring.enabled
+        value: "true"
+      - name: batchIntegrity.enabled
+        value: "true"
+  
+  destination:
+    server: https://pharma-prod-cluster.company.com
+    namespace: manufacturing-prod
+  
+  syncPolicy:
+    # Manual sync required for FDA validated systems
+    automated: null
+    syncOptions:
+    - CreateNamespace=true
+    - PrunePropagationPolicy=foreground
+    - PruneLast=true
+    - ApplyOutOfSyncOnly=true
+    - RespectIgnoreDifferences=true
+    - ServerSideApply=true
+    - Validate=true
+    retry:
+      limit: 3  # Conservative retry for manufacturing
+      backoff:
+        duration: 60s
+        factor: 2
+        maxDuration: 15m
+    managedNamespaceMetadata:
+      labels:
+        environment: production
+        compliance-framework: fda-21cfr11,gmp,iso-13485
+        business-criticality: critical
+        manufacturing-line: active
+        audit-required: "true"
+      annotations:
+        fda.compliance/validation-required: "true"
+        gmp.compliance/audit-trail: "enabled"
+        manufacturing.company.com/batch-tracking: "required"
+  
+  revisionHistoryLimit: 100  # Extended history for FDA compliance
+  
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/replicas  # Fixed replicas, no auto-scaling
+  - group: argoproj.io
+    kind: Rollout
+    jsonPointers:
+    - /status
+  
+  # Comprehensive FDA-compliant deployment validation
+  operation:
+    sync:
+      hooks:
+      - name: pre-sync-gmp-validation
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "=== FDA 21 CFR Part 11 Pre-Sync Validation ==="
+          
+          # Check manufacturing schedule
+          current_hour=$(date +%H)
+          day_of_week=$(date +%u)
+          
+          # Block deployments during active production (Mon-Fri 6AM-10PM)
+          if [ $day_of_week -le 5 ] && [ $current_hour -ge 6 ] && [ $current_hour -le 22 ]; then
+            echo "ERROR: Cannot deploy during active manufacturing hours (6AM-10PM Mon-Fri)"
+            exit 1
+          fi
+          
+          # Validate no active batches
+          active_batches=$(kubectl exec -n manufacturing-prod deployment/batch-management -- curl -s http://localhost:8080/batches/active/count)
+          if [ "$active_batches" -gt 0 ]; then
+            echo "ERROR: Cannot deploy with $active_batches active batches in progress"
+            exit 1
+          fi
+          
+          # Check environmental conditions
+          kubectl exec -n manufacturing-prod deployment/environmental-monitor -- curl -f http://localhost:8080/environment/validate
+          
+          # Validate equipment status
+          kubectl exec -n manufacturing-prod deployment/equipment-monitor -- curl -f http://localhost:8080/equipment/status/all-operational
+          
+          # Check quality control systems
+          kubectl exec -n manufacturing-prod deployment/quality-control -- curl -f http://localhost:8080/qc/systems/ready
+          
+          echo "GMP pre-sync validation passed"
+      
+      - name: pre-sync-audit-trail-init
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "=== Audit Trail Initialization ==="
+          
+          # Create deployment audit record
+          deployment_id=$(uuidgen)
+          timestamp=$(date -Iseconds)
+          
+          # Log to FDA audit system
+          kubectl exec -n manufacturing-prod deployment/audit-logger -- curl -X POST http://localhost:8080/audit/deployment \
+            -H 'Content-type: application/json' \
+            --data "{
+              \"deployment_id\": \"$deployment_id\",
+              \"application\": \"manufacturing-control-prod\",
+              \"timestamp\": \"$timestamp\",
+              \"initiated_by\": \"$ARGOCD_APP_REVISION\",
+              \"compliance_framework\": \"FDA-21CFR11\",
+              \"validation_status\": \"in_progress\"
+            }"
+          
+          # Store deployment ID for post-sync reference
+          echo "$deployment_id" > /tmp/deployment_id
+          
+          echo "Audit trail initialized with ID: $deployment_id"
+      
+      - name: canary-manufacturing-validation
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "=== Canary Manufacturing Validation ==="
+          
+          # Wait for canary deployment
+          kubectl rollout status rollout/manufacturing-control -n manufacturing-prod --timeout=900s
+          
+          # Validate canary system health
+          kubectl exec -n manufacturing-prod deployment/manufacturing-control-canary -- curl -f http://localhost:8080/health/manufacturing
+          
+          # Run canary validation for 15 minutes (extended for manufacturing)
+          for i in {1..30}; do
+            echo "Canary validation check $i/30"
+            
+            # Check manufacturing efficiency
+            efficiency=$(kubectl exec -n manufacturing-prod deployment/manufacturing-control-canary -- curl -s http://localhost:8080/metrics/efficiency | jq '.current_efficiency')
+            if [ $(echo "$efficiency < 98" | bc) -eq 1 ]; then
+              echo "ERROR: Canary efficiency $efficiency% below 98% threshold"
+              exit 1
+            fi
+            
+            # Validate environmental parameters
+            kubectl exec -n manufacturing-prod deployment/manufacturing-control-canary -- curl -f http://localhost:8080/environment/parameters/validate
+            
+            # Check equipment integration
+            equipment_status=$(kubectl exec -n manufacturing-prod deployment/manufacturing-control-canary -- curl -s http://localhost:8080/equipment/integration/status | jq '.status')
+            if [ "$equipment_status" != "\"healthy\"" ]; then
+              echo "ERROR: Equipment integration status: $equipment_status"
+              exit 1
+            fi
+            
+            # Validate batch tracking system
+            kubectl exec -n manufacturing-prod deployment/manufacturing-control-canary -- curl -f http://localhost:8080/batch/tracking/validate
+            
+            # Check quality control integration
+            kubectl exec -n manufacturing-prod deployment/manufacturing-control-canary -- curl -f http://localhost:8080/qc/integration/test
+            
+            sleep 30
+          done
+          
+          echo "Canary manufacturing validation passed"
+      
+      - name: post-sync-fda-validation
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "=== Post-Sync FDA Validation ==="
+          
+          # Wait for full rollout
+          kubectl rollout status rollout/manufacturing-control -n manufacturing-prod --timeout=900s
+          
+          # Comprehensive system validation
+          kubectl exec -n manufacturing-prod deployment/manufacturing-control -- curl -f http://localhost:8080/health/comprehensive
+          
+          # Validate FDA 21 CFR Part 11 compliance
+          kubectl exec -n manufacturing-prod deployment/manufacturing-control -- curl -f http://localhost:8080/compliance/fda21cfr11/validate
+          
+          # Test complete manufacturing workflow
+          workflow_test=$(kubectl exec -n manufacturing-prod deployment/manufacturing-control -- curl -s -X POST http://localhost:8080/test/workflow/complete)
+          if [ "$(echo $workflow_test | jq '.success')" != "true" ]; then
+            echo "ERROR: Complete workflow test failed"
+            exit 1
+          fi
+          
+          # Validate environmental monitoring integration
+          kubectl exec -n manufacturing-prod deployment/manufacturing-control -- curl -f http://localhost:8080/environment/monitoring/integration
+          
+          # Test equipment control interfaces
+          kubectl exec -n manufacturing-prod deployment/manufacturing-control -- curl -f http://localhost:8080/equipment/control/test-all
+          
+          # Validate batch integrity system
+          kubectl exec -n manufacturing-prod deployment/manufacturing-control -- curl -f http://localhost:8080/batch/integrity/validate
+          
+          # Run extended monitoring for 20 minutes
+          for i in {1..40}; do
+            echo "Post-deployment FDA monitoring $i/40"
+            
+            # Continuous efficiency monitoring
+            efficiency=$(kubectl exec -n manufacturing-prod deployment/manufacturing-control -- curl -s http://localhost:8080/metrics/efficiency | jq '.current_efficiency')
+            if [ $(echo "$efficiency < 98" | bc) -eq 1 ]; then
+              echo "ERROR: Post-deployment efficiency $efficiency% below 98% threshold"
+              exit 1
+            fi
+            
+            # Environmental compliance check
+            kubectl exec -n manufacturing-prod deployment/manufacturing-control -- curl -f http://localhost:8080/environment/compliance/check
+            
+            # Quality system validation
+            kubectl exec -n manufacturing-prod deployment/manufacturing-control -- curl -f http://localhost:8080/qc/system/validate
+            
+            sleep 30
+          done
+          
+          echo "Post-sync FDA validation completed successfully"
+      
+      - name: post-sync-audit-completion
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "=== Audit Trail Completion ==="
+          
+          deployment_id=$(cat /tmp/deployment_id 2>/dev/null || echo "unknown")
+          timestamp=$(date -Iseconds)
+          
+          # Complete audit record
+          kubectl exec -n manufacturing-prod deployment/audit-logger -- curl -X PUT http://localhost:8080/audit/deployment/$deployment_id \
+            -H 'Content-type: application/json' \
+            --data "{
+              \"deployment_id\": \"$deployment_id\",
+              \"completion_timestamp\": \"$timestamp\",
+              \"validation_status\": \"completed\",
+              \"compliance_verified\": true,
+              \"fda_validation_passed\": true,
+              \"gmp_compliance_confirmed\": true,
+              \"efficiency_validated\": true,
+              \"environmental_parameters_verified\": true,
+              \"batch_integrity_confirmed\": true,
+              \"equipment_integration_tested\": true
+            }"
+          
+          # Send regulatory notification
+          curl -X POST $REGULATORY_WEBHOOK_URL \
+            -H 'Content-type: application/json' \
+            --data "{
+              \"message\": \"FDA-validated deployment completed successfully\",
+              \"application\": \"manufacturing-control-prod\",
+              \"deployment_id\": \"$deployment_id\",
+              \"timestamp\": \"$timestamp\",
+              \"compliance_status\": \"verified\"
+            }"
+          
+          echo "Audit trail completion recorded with ID: $deployment_id"
+  
+  info:
+  - name: 'Business Impact'
+    value: 'CRITICAL - Production manufacturing control system, $50K/batch loss risk'
+  - name: 'Compliance Framework'
+    value: 'FDA 21 CFR Part 11, GMP, ISO 13485'
+  - name: 'SLA Target'
+    value: '99.9% uptime, 98% minimum efficiency'
+  - name: 'Owner'
+    value: 'Manufacturing Engineering Team'
+  - name: 'On-Call'
+    value: 'manufacturing-oncall@company.com'
+  - name: 'Deployment Window'
+    value: 'Outside production hours (10:01 PM - 5:59 AM, Weekends)'
+  - name: 'FDA Validation'
+    value: 'Required - Must pass comprehensive validation suite'
+  - name: 'Progressive Delivery'
+    value: 'Canary with 15-minute manufacturing validation'
+  - name: 'Rollback Policy'
+    value: 'Automated on efficiency <98% or environmental violations'
+  - name: 'Audit Trail'
+    value: 'Complete FDA-compliant audit trail with deployment tracking'

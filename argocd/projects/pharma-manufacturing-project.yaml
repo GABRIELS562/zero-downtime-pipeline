@@ -1,0 +1,198 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: pharma-manufacturing
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/business-criticality: "critical"
+    argocd.argoproj.io/compliance-framework: "fda-21cfr11,gmp,iso-13485"
+    argocd.argoproj.io/forensic-logging: "enabled"
+    argocd.argoproj.io/audit-trail: "required"
+spec:
+  description: "Pharmaceutical Manufacturing Control Systems - FDA Validated Applications"
+  
+  # Git repositories for pharma manufacturing
+  sourceRepos:
+  - 'https://github.com/company/pharma-manufacturing.git'
+  - 'https://github.com/company/pharma-infrastructure.git'
+  - 'https://github.com/company/quality-control.git'
+  - 'https://github.com/company/environmental-monitoring.git'
+  - 'https://helm-charts.pharma.company.com/*'
+  
+  # Manufacturing environment destinations
+  destinations:
+  - namespace: 'manufacturing-*'
+    server: https://pharma-dev-cluster.company.com
+    name: pharma-dev
+  - namespace: 'manufacturing-*'
+    server: https://pharma-staging-cluster.company.com
+    name: pharma-staging
+  - namespace: 'manufacturing-*'
+    server: https://pharma-prod-cluster.company.com
+    name: pharma-prod
+  - namespace: 'quality-control'
+    server: https://pharma-prod-cluster.company.com
+    name: pharma-prod
+  - namespace: 'environmental-monitoring'
+    server: https://pharma-prod-cluster.company.com
+    name: pharma-prod
+  - namespace: 'batch-management'
+    server: https://pharma-prod-cluster.company.com
+    name: pharma-prod
+  
+  # Cluster resources for manufacturing systems
+  clusterResourceWhitelist:
+  - group: ''
+    kind: Namespace
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRole
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRoleBinding
+  - group: networking.k8s.io
+    kind: NetworkPolicy
+  - group: policy
+    kind: PodSecurityPolicy
+  - group: security.istio.io
+    kind: PeerAuthentication
+  - group: networking.istio.io
+    kind: VirtualService
+  - group: networking.istio.io
+    kind: DestinationRule
+  - group: networking.istio.io
+    kind: Gateway
+  - group: cert-manager.io
+    kind: ClusterIssuer
+  
+  # Manufacturing application resources
+  namespaceResourceWhitelist:
+  - group: ''
+    kind: ConfigMap
+  - group: ''
+    kind: Secret
+  - group: ''
+    kind: Service
+  - group: ''
+    kind: ServiceAccount
+  - group: ''
+    kind: PersistentVolumeClaim
+  - group: apps
+    kind: Deployment
+  - group: apps
+    kind: StatefulSet
+  - group: batch
+    kind: Job
+  - group: batch
+    kind: CronJob
+  - group: extensions
+    kind: Ingress
+  - group: networking.k8s.io
+    kind: Ingress
+  - group: autoscaling
+    kind: HorizontalPodAutoscaler
+  - group: argoproj.io
+    kind: Rollout
+  - group: flagger.app
+    kind: Canary
+  - group: monitoring.coreos.com
+    kind: ServiceMonitor
+  - group: monitoring.coreos.com
+    kind: PrometheusRule
+  - group: cert-manager.io
+    kind: Certificate
+  
+  # Roles for pharmaceutical manufacturing
+  roles:
+  # Manufacturing engineers
+  - name: manufacturing-engineers
+    description: "Manufacturing engineers with development deployment access"
+    policies:
+    - p, proj:pharma-manufacturing:manufacturing-engineers, applications, get, pharma-manufacturing/*, allow
+    - p, proj:pharma-manufacturing:manufacturing-engineers, applications, sync, pharma-manufacturing/manufacturing-*-dev, allow
+    - p, proj:pharma-manufacturing:manufacturing-engineers, applications, sync, pharma-manufacturing/manufacturing-*-staging, allow
+    - p, proj:pharma-manufacturing:manufacturing-engineers, repositories, get, *, allow
+    - p, proj:pharma-manufacturing:manufacturing-engineers, logs, get, pharma-manufacturing/*, allow
+    groups:
+    - company:manufacturing-engineers
+    - company:process-engineers
+  
+  # Quality assurance team
+  - name: quality-assurance
+    description: "QA team with validation and approval access"
+    policies:
+    - p, proj:pharma-manufacturing:quality-assurance, applications, get, pharma-manufacturing/*, allow
+    - p, proj:pharma-manufacturing:quality-assurance, applications, sync, pharma-manufacturing/quality-*-staging, allow
+    - p, proj:pharma-manufacturing:quality-assurance, repositories, get, *, allow
+    - p, proj:pharma-manufacturing:quality-assurance, logs, get, pharma-manufacturing/*, allow
+    groups:
+    - company:quality-assurance
+    - company:validation-engineers
+  
+  # Production deployment requires FDA validation
+  - name: fda-validated-deployers
+    description: "FDA validated personnel authorized for production deployments"
+    policies:
+    - p, proj:pharma-manufacturing:fda-validated-deployers, applications, sync, pharma-manufacturing/manufacturing-*-prod, allow
+    - p, proj:pharma-manufacturing:fda-validated-deployers, applications, get, pharma-manufacturing/*, allow
+    - p, proj:pharma-manufacturing:fda-validated-deployers, applications, action, pharma-manufacturing/*, allow
+    groups:
+    - company:fda-validated-engineers
+    - company:manufacturing-leads
+    - company:regulatory-affairs
+  
+  # Sync windows for GMP compliance
+  syncWindows:
+  # Block deployments during production runs
+  - kind: deny
+    schedule: '0 6-22 * * 1-5'  # 6:00 AM - 10:00 PM (production hours)
+    duration: 16h
+    applications:
+    - manufacturing-*-prod
+    - quality-control-prod
+    - batch-management-prod
+    namespaces:
+    - manufacturing-prod
+    - quality-control
+    - batch-management
+    clusters:
+    - pharma-prod
+    manualSync: false
+    timeZone: America/New_York
+  
+  # Validation window during maintenance
+  - kind: allow
+    schedule: '0 1-5 * * 6-7'  # 1:00 AM - 5:00 AM weekends (validation window)
+    duration: 4h
+    applications:
+    - '*'
+    namespaces:
+    - '*'
+    clusters:
+    - '*'
+    manualSync: true
+    timeZone: America/New_York
+  
+  # Emergency deployment with full audit trail
+  - kind: allow
+    schedule: '* * * * *'
+    duration: 24h
+    applications:
+    - manufacturing-*-emergency
+    - quality-*-emergency
+    namespaces:
+    - manufacturing-*
+    - quality-*
+    clusters:
+    - '*'
+    manualSync: true
+    timeZone: America/New_York
+  
+  # FDA requires signed commits for all production deployments
+  signatureKeys:
+  - keyID: FDA1234567890ABCDEF  # FDA validated team key
+  - keyID: GMP1234567890ABCDEF  # GMP compliance team key
+  - keyID: QA1234567890ABCDEF   # Quality assurance team key
+  
+  # Strict orphaned resources policy for GMP compliance
+  orphanedResources:
+    warn: false  # Fail on orphaned resources
+    ignore: []   # No exceptions - all resources must be tracked

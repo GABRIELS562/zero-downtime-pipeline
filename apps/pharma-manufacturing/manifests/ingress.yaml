@@ -1,0 +1,378 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pharma-manufacturing-ingress
+  namespace: pharma-prod
+  labels:
+    app: pharma-manufacturing
+    tier: production
+    compliance: fda-21cfr11
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://pharma-manufacturing.example.com"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization,X-FDA-User-ID,X-Digital-Signature,X-Audit-ID,X-Batch-ID"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    pharma.fda/audit-logging: "enabled"
+    pharma.fda/access-control: "required"
+    pharma.fda/digital-signatures: "required"
+    pharma.fda/data-integrity: "validated"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      # FDA 21 CFR Part 11 Compliance Headers
+      more_set_headers "X-FDA-Compliance: 21CFR11";
+      more_set_headers "X-GMP-Validated: true";
+      more_set_headers "X-Audit-Trail: enabled";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains";
+      
+      # Audit logging for all requests
+      access_log /var/log/nginx/audit.log audit_trail;
+      
+      # Digital signature validation
+      access_by_lua_block {
+        local signature = ngx.var.http_x_digital_signature
+        if signature then
+          -- Validate digital signature
+          local validation = require("signature_validator")
+          if not validation.validate(signature) then
+            ngx.log(ngx.ERR, "Invalid digital signature")
+            ngx.status = 401
+            ngx.say("Invalid digital signature")
+            ngx.exit(401)
+          end
+        end
+      }
+spec:
+  tls:
+  - hosts:
+    - pharma-manufacturing.example.com
+    - pharma-scada.example.com
+    - pharma-audit.example.com
+    secretName: pharma-manufacturing-tls
+  rules:
+  - host: pharma-manufacturing.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: pharma-manufacturing-service
+            port:
+              number: 80
+      - path: /health
+        pathType: Prefix
+        backend:
+          service:
+            name: pharma-manufacturing-service
+            port:
+              number: 8081
+      - path: /metrics
+        pathType: Prefix
+        backend:
+          service:
+            name: pharma-manufacturing-service
+            port:
+              number: 9090
+  - host: pharma-scada.example.com
+    http:
+      paths:
+      - path: /scada
+        pathType: Prefix
+        backend:
+          service:
+            name: pharma-manufacturing-service
+            port:
+              number: 8082
+      - path: /sensors
+        pathType: Prefix
+        backend:
+          service:
+            name: pharma-sensor-service
+            port:
+              number: 8083
+      - path: /batch
+        pathType: Prefix
+        backend:
+          service:
+            name: pharma-batch-service
+            port:
+              number: 8084
+  - host: pharma-audit.example.com
+    http:
+      paths:
+      - path: /audit
+        pathType: Prefix
+        backend:
+          service:
+            name: pharma-audit-service
+            port:
+              number: 8085
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pharma-manufacturing-network-policy
+  namespace: pharma-prod
+  labels:
+    app: pharma-manufacturing
+    compliance: fda-21cfr11
+spec:
+  podSelector:
+    matchLabels:
+      app: pharma-manufacturing
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: pharma-prod
+    - namespaceSelector:
+        matchLabels:
+          name: istio-system
+    - namespaceSelector:
+        matchLabels:
+          name: nginx-ingress
+    - podSelector:
+        matchLabels:
+          app: prometheus
+    - podSelector:
+        matchLabels:
+          app: grafana
+    - podSelector:
+        matchLabels:
+          app: audit-collector
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8081
+    - protocol: TCP
+      port: 8082
+    - protocol: TCP
+      port: 8083
+    - protocol: TCP
+      port: 8084
+    - protocol: TCP
+      port: 8085
+    - protocol: TCP
+      port: 9090
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+  - to:
+    - podSelector:
+        matchLabels:
+          app: sensor-gateway
+    ports:
+    - protocol: TCP
+      port: 8080
+  - to:
+    - podSelector:
+        matchLabels:
+          app: batch-database
+    ports:
+    - protocol: TCP
+      port: 5432
+  - to:
+    - podSelector:
+        matchLabels:
+          app: audit-database
+    ports:
+    - protocol: TCP
+      port: 5432
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pharma-secrets
+  namespace: pharma-prod
+  labels:
+    app: pharma-manufacturing
+    compliance: fda-21cfr11
+type: Opaque
+stringData:
+  batch-database-url: "postgresql://batch_user:secure_password@batch-db:5432/batch_control"
+  audit-database-url: "postgresql://audit_user:secure_password@audit-db:5432/audit_trail"
+  sensor-gateway-api-key: "your-sensor-api-key-here"
+  digital-signature-key: "your-digital-signature-key-here"
+  encryption-key: "your-encryption-key-here"
+  fda-compliance-token: "your-fda-compliance-token-here"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: digital-signatures
+  namespace: pharma-prod
+  labels:
+    app: pharma-manufacturing
+    compliance: fda-21cfr11
+type: Opaque
+stringData:
+  ca-certificate.pem: |
+    -----BEGIN CERTIFICATE-----
+    # FDA-compliant CA certificate for digital signatures
+    # This would contain the actual CA certificate
+    -----END CERTIFICATE-----
+  signing-key.pem: |
+    -----BEGIN PRIVATE KEY-----
+    # FDA-compliant signing key for digital signatures
+    # This would contain the actual private key
+    -----END PRIVATE KEY-----
+  public-key.pem: |
+    -----BEGIN PUBLIC KEY-----
+    # FDA-compliant public key for signature validation
+    # This would contain the actual public key
+    -----END PUBLIC KEY-----
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pharma-manufacturing-sa
+  namespace: pharma-prod
+  labels:
+    app: pharma-manufacturing
+    compliance: fda-21cfr11
+  annotations:
+    pharma.fda/validated-user: "true"
+    pharma.fda/access-level: "manufacturing-control"
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pharma-manufacturing-role
+  namespace: pharma-prod
+  labels:
+    app: pharma-manufacturing
+    compliance: fda-21cfr11
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+- apiGroups: ["monitoring.coreos.com"]
+  resources: ["servicemonitors"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pharma-manufacturing-rolebinding
+  namespace: pharma-prod
+  labels:
+    app: pharma-manufacturing
+    compliance: fda-21cfr11
+subjects:
+- kind: ServiceAccount
+  name: pharma-manufacturing-sa
+  namespace: pharma-prod
+roleRef:
+  kind: Role
+  name: pharma-manufacturing-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-audit-config
+  namespace: pharma-prod
+  labels:
+    app: pharma-manufacturing
+    compliance: fda-21cfr11
+data:
+  nginx.conf: |
+    # FDA 21 CFR Part 11 Compliant Nginx Configuration
+    log_format audit_trail '$remote_addr - $remote_user [$time_local] "$request" '
+                          '$status $body_bytes_sent "$http_referer" '
+                          '"$http_user_agent" "$http_x_forwarded_for" '
+                          '"$http_x_fda_user_id" "$http_x_digital_signature" '
+                          '"$http_x_audit_id" "$http_x_batch_id" '
+                          '$request_time $upstream_response_time';
+    
+    server {
+        listen 80;
+        server_name pharma-manufacturing.example.com;
+        
+        # Security headers for FDA compliance
+        add_header X-FDA-Compliance "21CFR11" always;
+        add_header X-GMP-Validated "true" always;
+        add_header X-Audit-Trail "enabled" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        
+        # Audit logging for all requests
+        access_log /var/log/nginx/audit.log audit_trail;
+        error_log /var/log/nginx/error.log;
+        
+        # Rate limiting for protection
+        limit_req_zone $binary_remote_addr zone=manufacturing:10m rate=10r/s;
+        limit_req zone=manufacturing burst=20 nodelay;
+        
+        # Client certificate validation for high-security endpoints
+        ssl_verify_client optional;
+        ssl_client_certificate /etc/ssl/certs/ca-certificates.crt;
+        
+        location / {
+            proxy_pass http://pharma-manufacturing-service;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            
+            # Add audit headers
+            proxy_set_header X-Audit-Timestamp $time_iso8601;
+            proxy_set_header X-Request-ID $request_id;
+        }
+        
+        location /audit {
+            # Require client certificate for audit access
+            ssl_verify_client on;
+            proxy_pass http://pharma-audit-service;
+        }
+        
+        location /batch {
+            # Enhanced logging for batch operations
+            access_log /var/log/nginx/batch-audit.log audit_trail;
+            proxy_pass http://pharma-batch-service;
+        }
+    }

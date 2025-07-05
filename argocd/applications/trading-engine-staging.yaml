@@ -1,0 +1,141 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trading-engine-staging
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: trading-engine
+    app.kubernetes.io/component: trading-core
+    environment: staging
+    business-criticality: high
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/business-impact: "high"
+    argocd.argoproj.io/max-latency-ms: "75"
+    argocd.argoproj.io/revenue-per-minute: "500"
+    argocd.argoproj.io/canary-analysis: "enabled"
+    notifications.argoproj.io/subscribe.on-sync-succeeded.slack: "trading-staging"
+    notifications.argoproj.io/subscribe.on-sync-failed.slack: "trading-alerts"
+    notifications.argoproj.io/subscribe.on-health-degraded.slack: "trading-alerts"
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: trading-platform
+  
+  source:
+    repoURL: https://github.com/company/trading-platform.git
+    targetRevision: release
+    path: helm/trading-engine
+    helm:
+      valueFiles:
+      - values-staging.yaml
+      parameters:
+      - name: image.tag
+        value: "staging-v1.2.3"
+      - name: replicaCount
+        value: "3"
+      - name: resources.requests.memory
+        value: "1Gi"
+      - name: resources.requests.cpu
+        value: "500m"
+      - name: resources.limits.memory
+        value: "2Gi"
+      - name: resources.limits.cpu
+        value: "1000m"
+      - name: autoscaling.enabled
+        value: "true"
+      - name: autoscaling.minReplicas
+        value: "3"
+      - name: autoscaling.maxReplicas
+        value: "10"
+      - name: monitoring.enabled
+        value: "true"
+      - name: tracing.enabled
+        value: "true"
+      - name: logging.level
+        value: "INFO"
+      - name: progressiveDelivery.enabled
+        value: "true"
+      - name: progressiveDelivery.strategy
+        value: "canary"
+      - name: healthChecks.enabled
+        value: "true"
+      - name: businessMetrics.enabled
+        value: "true"
+  
+  destination:
+    server: https://trading-staging-cluster.company.com
+    namespace: trading-staging
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+    - CreateNamespace=true
+    - PrunePropagationPolicy=foreground
+    - PruneLast=true
+    - ApplyOutOfSyncOnly=true
+    - RespectIgnoreDifferences=true
+    - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+    managedNamespaceMetadata:
+      labels:
+        environment: staging
+        compliance-framework: sox,mifid-ii
+        business-criticality: high
+  
+  revisionHistoryLimit: 20
+  
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/replicas
+  - group: argoproj.io
+    kind: Rollout
+    jsonPointers:
+    - /spec/replicas
+    - /status
+  
+  # Health checks for staging environment
+  operation:
+    sync:
+      hooks:
+      - name: pre-sync-health-check
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Running pre-sync health checks..."
+          kubectl get pods -n trading-staging -l app=trading-engine --field-selector=status.phase=Running | grep -q trading-engine
+      - name: post-sync-validation
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Running post-sync validation..."
+          # Wait for rollout to complete
+          kubectl rollout status deployment/trading-engine -n trading-staging --timeout=300s
+          # Validate health endpoint
+          kubectl exec -n trading-staging deployment/trading-engine -- curl -f http://localhost:8080/health
+          # Check business metrics
+          kubectl exec -n trading-staging deployment/trading-engine -- curl -f http://localhost:8080/metrics/business
+  
+  info:
+  - name: 'Business Impact'
+    value: 'High - Staging environment with production-like load testing'
+  - name: 'SLA Target'
+    value: '99% uptime, <75ms latency, 95% success rate'
+  - name: 'Owner'
+    value: 'Trading Platform Team'
+  - name: 'On-Call'
+    value: 'trading-oncall@company.com'
+  - name: 'Canary Analysis'
+    value: 'Enabled with 5-minute analysis window'

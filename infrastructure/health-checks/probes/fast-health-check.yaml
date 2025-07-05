@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fast-health-check-config
+  namespace: production
+data:
+  health-check.yaml: |
+    probes:
+      liveness:
+        httpGet:
+          path: /health/live
+          port: 8080
+        initialDelaySeconds: 5
+        periodSeconds: 1
+        timeoutSeconds: 1
+        failureThreshold: 3
+      readiness:
+        httpGet:
+          path: /health/ready
+          port: 8080
+        initialDelaySeconds: 2
+        periodSeconds: 1
+        timeoutSeconds: 1
+        failureThreshold: 2
+      startup:
+        httpGet:
+          path: /health/startup
+          port: 8080
+        initialDelaySeconds: 1
+        periodSeconds: 1
+        timeoutSeconds: 1
+        failureThreshold: 30
+    
+    # Sub-50ms health check configuration
+    fast_check:
+      endpoint: /health/fast
+      max_response_time_ms: 50
+      concurrent_checks: 10
+      cache_ttl_ms: 100
+      circuit_breaker:
+        failure_threshold: 5
+        recovery_timeout_ms: 1000

@@ -1,0 +1,195 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: trading-platform
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/business-criticality: "critical"
+    argocd.argoproj.io/compliance-framework: "sox,mifid-ii,dodd-frank"
+    argocd.argoproj.io/forensic-logging: "enabled"
+spec:
+  description: "Financial Trading Platform - Business Critical Applications"
+  
+  # Git repositories that applications within this project can deploy from
+  sourceRepos:
+  - 'https://github.com/company/trading-platform.git'
+  - 'https://github.com/company/trading-infrastructure.git'
+  - 'https://github.com/company/market-data.git'
+  - 'https://helm-charts.company.com/*'
+  
+  # Destination clusters and namespaces
+  destinations:
+  - namespace: 'trading-*'
+    server: https://trading-dev-cluster.company.com
+    name: trading-dev
+  - namespace: 'trading-*'
+    server: https://trading-staging-cluster.company.com
+    name: trading-staging
+  - namespace: 'trading-*'
+    server: https://trading-prod-cluster.company.com
+    name: trading-prod
+  - namespace: 'market-data-*'
+    server: https://trading-prod-cluster.company.com
+    name: trading-prod
+  - namespace: 'risk-management'
+    server: https://trading-prod-cluster.company.com
+    name: trading-prod
+  
+  # Cluster-scoped resources which may be managed
+  clusterResourceWhitelist:
+  - group: ''
+    kind: Namespace
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRole
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRoleBinding
+  - group: networking.k8s.io
+    kind: NetworkPolicy
+  - group: policy
+    kind: PodSecurityPolicy
+  - group: security.istio.io
+    kind: PeerAuthentication
+  - group: networking.istio.io
+    kind: VirtualService
+  - group: networking.istio.io
+    kind: DestinationRule
+  - group: networking.istio.io
+    kind: Gateway
+  
+  # Namespace-scoped resources
+  namespaceResourceWhitelist:
+  - group: ''
+    kind: ConfigMap
+  - group: ''
+    kind: Secret
+  - group: ''
+    kind: Service
+  - group: ''
+    kind: ServiceAccount
+  - group: apps
+    kind: Deployment
+  - group: apps
+    kind: StatefulSet
+  - group: apps
+    kind: DaemonSet
+  - group: batch
+    kind: Job
+  - group: batch
+    kind: CronJob
+  - group: extensions
+    kind: Ingress
+  - group: networking.k8s.io
+    kind: Ingress
+  - group: autoscaling
+    kind: HorizontalPodAutoscaler
+  - group: argoproj.io
+    kind: Rollout
+  - group: flagger.app
+    kind: Canary
+  - group: monitoring.coreos.com
+    kind: ServiceMonitor
+  - group: monitoring.coreos.com
+    kind: PrometheusRule
+  
+  # Deny access to certain resources
+  namespaceResourceBlacklist:
+  - group: ''
+    kind: ResourceQuota
+  - group: ''
+    kind: LimitRange
+  
+  # Roles associated with the project
+  roles:
+  # Trading team developers
+  - name: trading-developers
+    description: "Trading platform developers with limited deployment access"
+    policies:
+    - p, proj:trading-platform:trading-developers, applications, get, trading-platform/*, allow
+    - p, proj:trading-platform:trading-developers, applications, sync, trading-platform/trading-*-dev, allow
+    - p, proj:trading-platform:trading-developers, applications, sync, trading-platform/trading-*-staging, allow
+    - p, proj:trading-platform:trading-developers, repositories, get, *, allow
+    - p, proj:trading-platform:trading-developers, logs, get, trading-platform/*, allow
+    groups:
+    - company:trading-developers
+    - company:platform-engineers
+  
+  # DevOps engineers with full access
+  - name: devops-engineers
+    description: "DevOps engineers with full deployment access"
+    policies:
+    - p, proj:trading-platform:devops-engineers, applications, *, trading-platform/*, allow
+    - p, proj:trading-platform:devops-engineers, repositories, *, *, allow
+    - p, proj:trading-platform:devops-engineers, clusters, *, *, allow
+    - p, proj:trading-platform:devops-engineers, exec, create, trading-platform/*, allow
+    groups:
+    - company:devops-engineers
+    - company:platform-admins
+  
+  # Production deployment approval role
+  - name: production-approvers
+    description: "Production deployment approvers (executives/senior engineers)"
+    policies:
+    - p, proj:trading-platform:production-approvers, applications, sync, trading-platform/trading-*-prod, allow
+    - p, proj:trading-platform:production-approvers, applications, get, trading-platform/*, allow
+    groups:
+    - company:senior-engineers
+    - company:trading-leads
+    - company:risk-managers
+  
+  # Sync policies for automated deployments
+  syncWindows:
+  # Block deployments during trading hours for production
+  - kind: deny
+    schedule: '30 13-20 * * 1-5'  # 1:30 PM - 8:00 PM EST (trading hours)
+    duration: 6h30m
+    applications:
+    - trading-*-prod
+    namespaces:
+    - trading-prod
+    - market-data-prod
+    clusters:
+    - trading-prod
+    manualSync: false
+    timeZone: America/New_York
+  
+  # Allow automated deployments during maintenance windows
+  - kind: allow
+    schedule: '0 2-6 * * *'  # 2:00 AM - 6:00 AM EST (maintenance window)
+    duration: 4h
+    applications:
+    - '*'
+    namespaces:
+    - '*'
+    clusters:
+    - '*'
+    manualSync: true
+    timeZone: America/New_York
+  
+  # Emergency deployment window (always allow for critical fixes)
+  - kind: allow
+    schedule: '* * * * *'  # Always available
+    duration: 24h
+    applications:
+    - trading-*-emergency
+    namespaces:
+    - trading-*
+    clusters:
+    - '*'
+    manualSync: true
+    timeZone: America/New_York
+  
+  # Signature keys for signed commits (required for production)
+  signatureKeys:
+  - keyID: 1234567890ABCDEF  # Trading team GPG key
+  - keyID: FEDCBA0987654321  # DevOps team GPG key
+  
+  # Orphaned resources policy
+  orphanedResources:
+    warn: true
+    ignore:
+    - group: apps
+      kind: ReplicaSet
+    - group: ''
+      kind: Pod
+    - group: ''
+      kind: Event

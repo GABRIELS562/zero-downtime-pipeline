@@ -1,0 +1,99 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trading-engine-dev
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: trading-engine
+    app.kubernetes.io/component: trading-core
+    environment: development
+    business-criticality: medium
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/business-impact: "medium"
+    argocd.argoproj.io/max-latency-ms: "100"
+    argocd.argoproj.io/revenue-per-minute: "100"
+    notifications.argoproj.io/subscribe.on-sync-succeeded.slack: "trading-dev"
+    notifications.argoproj.io/subscribe.on-sync-failed.slack: "trading-alerts"
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: trading-platform
+  
+  source:
+    repoURL: https://github.com/company/trading-platform.git
+    targetRevision: develop
+    path: helm/trading-engine
+    helm:
+      valueFiles:
+      - values-dev.yaml
+      parameters:
+      - name: image.tag
+        value: "dev-latest"
+      - name: replicaCount
+        value: "2"
+      - name: resources.requests.memory
+        value: "512Mi"
+      - name: resources.requests.cpu
+        value: "250m"
+      - name: resources.limits.memory
+        value: "1Gi"
+      - name: resources.limits.cpu
+        value: "500m"
+      - name: autoscaling.enabled
+        value: "true"
+      - name: autoscaling.minReplicas
+        value: "2"
+      - name: autoscaling.maxReplicas
+        value: "5"
+      - name: monitoring.enabled
+        value: "true"
+      - name: tracing.enabled
+        value: "true"
+      - name: logging.level
+        value: "DEBUG"
+  
+  destination:
+    server: https://trading-dev-cluster.company.com
+    namespace: trading-dev
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+    - CreateNamespace=true
+    - PrunePropagationPolicy=foreground
+    - PruneLast=true
+    - ApplyOutOfSyncOnly=true
+    - RespectIgnoreDifferences=true
+    - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  
+  revisionHistoryLimit: 10
+  
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/replicas
+  - group: ''
+    kind: Service
+    jsonPointers:
+    - /spec/clusterIP
+  
+  info:
+  - name: 'Business Impact'
+    value: 'Medium - Development environment for trading engine testing'
+  - name: 'SLA Target'
+    value: '95% uptime, <100ms latency'
+  - name: 'Owner'
+    value: 'Trading Platform Team'
+  - name: 'On-Call'
+    value: 'trading-oncall@company.com'
