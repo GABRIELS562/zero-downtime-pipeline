@@ -1,0 +1,92 @@
+# Example Terraform variables file
+# Copy this to terraform.tfvars and customize for your environment
+
+# Basic Configuration
+project_name = "zero-downtime-pipeline"
+environment  = "production"  # dev, staging, production
+aws_region   = "us-east-1"
+
+# Cost Center and Business Unit
+cost_center    = "engineering"
+business_unit  = "platform-engineering"
+backup_policy  = "standard"
+
+# Cost Optimization Settings
+enable_spot_instances       = true
+enable_cost_optimization   = true
+schedule_based_scaling     = true
+
+# ECS Configuration
+ecs_desired_capacity = 2
+ecs_min_capacity    = 1
+ecs_max_capacity    = 6
+ecs_instance_types  = ["t3.medium", "t3.large", "m5.large"]
+
+# Application Configuration
+finance_app_config = {
+  cpu                = 1024
+  memory             = 2048
+  desired_count      = 3
+  min_capacity       = 2
+  max_capacity       = 10
+  health_check_path  = "/health/ready"
+  container_port     = 8080
+  enable_autoscaling = true
+}
+
+pharma_app_config = {
+  cpu                = 2048
+  memory             = 4096
+  desired_count      = 2
+  min_capacity       = 1
+  max_capacity       = 6
+  health_check_path  = "/health/ready"
+  container_port     = 8080
+  enable_autoscaling = true
+}
+
+# CI/CD Configuration
+github_repo             = "your-org/zero-downtime-pipeline"
+github_branch          = "main"
+github_token_secret    = "github-token"
+build_timeout          = 15
+
+# Monitoring Configuration
+enable_business_metrics = true
+notification_endpoints  = [
+  # "arn:aws:sns:us-east-1:123456789012:deployment-notifications"
+]
+
+# Trading Hours Schedule (Eastern Time)
+trading_hours_schedule = {
+  scale_up_cron   = "0 13 * * 1-5"  # 9:30 AM ET (13:30 UTC) Mon-Fri
+  scale_down_cron = "0 21 * * 1-5"  # 4:00 PM ET (21:00 UTC) Mon-Fri
+  timezone        = "UTC"
+}
+
+# Manufacturing Hours Schedule
+manufacturing_hours_schedule = {
+  scale_up_cron   = "0 6 * * *"   # 6:00 AM UTC daily
+  scale_down_cron = "0 18 * * *"  # 6:00 PM UTC daily
+  timezone        = "UTC"
+}
+
+# Security Configuration
+enable_waf              = true
+allowed_cidr_blocks     = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+enable_vpc_flow_logs    = true
+
+# Database Configuration (for future use)
+database_config = {
+  engine         = "postgres"
+  instance_class = "db.t3.micro"
+  multi_az       = false
+  storage_type   = "gp3"
+  storage_size   = 20
+}
+
+# Compliance Configuration
+compliance_required           = "true"
+audit_log_retention_days     = 2555  # 7 years for FDA compliance
+enable_encryption_at_rest    = true
+enable_encryption_in_transit = true
