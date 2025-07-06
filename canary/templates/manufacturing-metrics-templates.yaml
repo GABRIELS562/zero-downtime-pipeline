@@ -1,0 +1,227 @@
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: manufacturing-efficiency
+  namespace: manufacturing-prod
+  labels:
+    app.kubernetes.io/name: manufacturing-metrics
+    business-domain: pharma-manufacturing
+    compliance-framework: fda-21cfr11
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    (sum(rate(manufacturing_production_output_units_total{namespace="manufacturing-prod"}[5m])) /
+     sum(rate(manufacturing_production_capacity_units_total{namespace="manufacturing-prod"}[5m]))) * 100
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: manufacturing-quality-score
+  namespace: manufacturing-prod
+  labels:
+    app.kubernetes.io/name: manufacturing-metrics
+    business-domain: pharma-manufacturing
+    compliance-framework: fda-21cfr11
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    sum(rate(manufacturing_quality_passed_batches_total{namespace="manufacturing-prod"}[5m])) /
+    sum(rate(manufacturing_quality_total_batches_total{namespace="manufacturing-prod"}[5m])) * 100
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: manufacturing-batch-success-rate
+  namespace: manufacturing-prod
+  labels:
+    app.kubernetes.io/name: manufacturing-metrics
+    business-domain: pharma-manufacturing
+    compliance-framework: fda-21cfr11
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    sum(rate(manufacturing_batch_completed_successfully_total{namespace="manufacturing-prod"}[10m])) /
+    sum(rate(manufacturing_batch_started_total{namespace="manufacturing-prod"}[10m])) * 100
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: manufacturing-environmental-compliance
+  namespace: manufacturing-prod
+  labels:
+    app.kubernetes.io/name: manufacturing-metrics
+    business-domain: pharma-manufacturing
+    compliance-framework: fda-21cfr11
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    min(
+      min(manufacturing_temperature_compliance_status{namespace="manufacturing-prod"}) * 100,
+      min(manufacturing_humidity_compliance_status{namespace="manufacturing-prod"}) * 100,
+      min(manufacturing_pressure_compliance_status{namespace="manufacturing-prod"}) * 100,
+      min(manufacturing_cleanliness_compliance_status{namespace="manufacturing-prod"}) * 100
+    )
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: manufacturing-equipment-health
+  namespace: manufacturing-prod
+  labels:
+    app.kubernetes.io/name: manufacturing-metrics
+    business-domain: pharma-manufacturing
+    compliance-framework: fda-21cfr11
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    avg(manufacturing_equipment_health_score{namespace="manufacturing-prod"})
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: manufacturing-response-time
+  namespace: manufacturing-prod
+  labels:
+    app.kubernetes.io/name: manufacturing-metrics
+    business-domain: pharma-manufacturing
+    compliance-framework: fda-21cfr11
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    histogram_quantile(0.95,
+      sum(rate(manufacturing_api_request_duration_seconds_bucket{namespace="manufacturing-prod"}[2m])) by (le)
+    ) * 1000
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: manufacturing-audit-trail-integrity
+  namespace: manufacturing-prod
+  labels:
+    app.kubernetes.io/name: manufacturing-metrics
+    business-domain: pharma-manufacturing
+    compliance-framework: fda-21cfr11
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    sum(rate(manufacturing_audit_trail_records_verified_total{namespace="manufacturing-prod"}[5m])) /
+    sum(rate(manufacturing_audit_trail_records_total{namespace="manufacturing-prod"}[5m])) * 100
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: manufacturing-regulatory-compliance
+  namespace: manufacturing-prod
+  labels:
+    app.kubernetes.io/name: manufacturing-metrics
+    business-domain: pharma-manufacturing
+    compliance-framework: fda-21cfr11
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    min(
+      manufacturing_fda_compliance_score{namespace="manufacturing-prod"},
+      manufacturing_gmp_compliance_score{namespace="manufacturing-prod"},
+      manufacturing_iso13485_compliance_score{namespace="manufacturing-prod"}
+    )
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: manufacturing-batch-tracking-accuracy
+  namespace: manufacturing-prod
+  labels:
+    app.kubernetes.io/name: manufacturing-metrics
+    business-domain: pharma-manufacturing
+    compliance-framework: fda-21cfr11
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    sum(rate(manufacturing_batch_tracking_accurate_total{namespace="manufacturing-prod"}[5m])) /
+    sum(rate(manufacturing_batch_tracking_total{namespace="manufacturing-prod"}[5m])) * 100
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: manufacturing-contamination-risk
+  namespace: manufacturing-prod
+  labels:
+    app.kubernetes.io/name: manufacturing-metrics
+    business-domain: pharma-manufacturing
+    compliance-framework: fda-21cfr11
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    sum(rate(manufacturing_contamination_events_total{namespace="manufacturing-prod"}[10m])) /
+    sum(rate(manufacturing_production_events_total{namespace="manufacturing-prod"}[10m])) * 100
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: manufacturing-yield-rate
+  namespace: manufacturing-prod
+  labels:
+    app.kubernetes.io/name: manufacturing-metrics
+    business-domain: pharma-manufacturing
+    compliance-framework: fda-21cfr11
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    sum(manufacturing_actual_yield_units{namespace="manufacturing-prod"}) /
+    sum(manufacturing_theoretical_yield_units{namespace="manufacturing-prod"}) * 100
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: manufacturing-deviation-rate
+  namespace: manufacturing-prod
+  labels:
+    app.kubernetes.io/name: manufacturing-metrics
+    business-domain: pharma-manufacturing
+    compliance-framework: fda-21cfr11
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    sum(rate(manufacturing_process_deviations_total{namespace="manufacturing-prod"}[10m])) /
+    sum(rate(manufacturing_process_operations_total{namespace="manufacturing-prod"}[10m])) * 100
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: manufacturing-cleaning-validation
+  namespace: manufacturing-prod
+  labels:
+    app.kubernetes.io/name: manufacturing-metrics
+    business-domain: pharma-manufacturing
+    compliance-framework: fda-21cfr11
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    sum(rate(manufacturing_cleaning_validation_passed_total{namespace="manufacturing-prod"}[5m])) /
+    sum(rate(manufacturing_cleaning_validation_total{namespace="manufacturing-prod"}[5m])) * 100

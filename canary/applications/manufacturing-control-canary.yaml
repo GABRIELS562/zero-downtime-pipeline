@@ -1,0 +1,240 @@
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: manufacturing-control
+  namespace: manufacturing-prod
+  labels:
+    app.kubernetes.io/name: manufacturing-control
+    app.kubernetes.io/component: pharma-manufacturing
+    business-criticality: critical
+    deployment-strategy: canary
+    compliance-framework: fda-21cfr11
+  annotations:
+    flagger.app/business-impact: "critical"
+    flagger.app/batch-cost-per-failure: "50000"
+    flagger.app/min-efficiency: "98"
+    flagger.app/quality-threshold: "99.9"
+    flagger.app/fda-validated: "true"
+    flagger.app/gmp-compliant: "true"
+spec:
+  # Manufacturing control service configuration
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: manufacturing-control
+  
+  # Production service configuration
+  service:
+    name: manufacturing-control
+    port: 8080
+    targetPort: 8080
+    gateways:
+    - manufacturing-prod-gateway
+    hosts:
+    - manufacturing-prod.company.com
+    trafficPolicy:
+      tls:
+        mode: ISTIO_MUTUAL
+      connectionPool:
+        tcp:
+          maxConnections: 100
+        http:
+          http1MaxPendingRequests: 50
+          maxRequestsPerConnection: 20
+      outlierDetection:
+        consecutive5xxErrors: 3
+        interval: 30s
+        baseEjectionTime: 30s
+        maxEjectionPercent: 50
+    
+  # FDA-compliant canary analysis for pharmaceutical manufacturing
+  analysis:
+    # Extended analysis for FDA validation
+    interval: 60s  # Longer intervals for manufacturing stability
+    threshold: 15   # More conservative threshold
+    maxWeight: 30   # Limited canary weight for manufacturing
+    stepWeight: 5
+    stepWeights: [5, 10, 15, 20, 25, 30]
+    stepWeightPromotion: 5
+    
+    # Manufacturing-specific metrics
+    metrics:
+    - name: manufacturing-efficiency
+      templateRef:
+        name: manufacturing-efficiency
+        namespace: manufacturing-prod
+      thresholdRange:
+        min: 98.0  # 98% minimum efficiency
+      interval: 60s
+      
+    - name: manufacturing-quality-score
+      templateRef:
+        name: manufacturing-quality-score
+        namespace: manufacturing-prod
+      thresholdRange:
+        min: 99.9  # 99.9% quality threshold
+      interval: 120s
+      
+    - name: manufacturing-batch-success-rate
+      templateRef:
+        name: manufacturing-batch-success-rate
+        namespace: manufacturing-prod
+      thresholdRange:
+        min: 99.95  # 99.95% batch success rate
+      interval: 180s
+      
+    - name: manufacturing-environmental-compliance
+      templateRef:
+        name: manufacturing-environmental-compliance
+        namespace: manufacturing-prod
+      thresholdRange:
+        min: 100  # Perfect environmental compliance
+      interval: 60s
+      
+    - name: manufacturing-equipment-health
+      templateRef:
+        name: manufacturing-equipment-health
+        namespace: manufacturing-prod
+      thresholdRange:
+        min: 99.0  # 99% equipment health
+      interval: 90s
+      
+    - name: manufacturing-response-time
+      templateRef:
+        name: manufacturing-response-time
+        namespace: manufacturing-prod
+      thresholdRange:
+        max: 500  # 500ms max response time
+      interval: 30s
+      
+    - name: manufacturing-audit-trail-integrity
+      templateRef:
+        name: manufacturing-audit-trail-integrity
+        namespace: manufacturing-prod
+      thresholdRange:
+        min: 100  # Perfect audit trail integrity
+      interval: 300s
+      
+    - name: manufacturing-regulatory-compliance
+      templateRef:
+        name: manufacturing-regulatory-compliance
+        namespace: manufacturing-prod
+      thresholdRange:
+        min: 100  # Perfect regulatory compliance
+      interval: 300s
+      
+    - name: manufacturing-batch-tracking-accuracy
+      templateRef:
+        name: manufacturing-batch-tracking-accuracy
+        namespace: manufacturing-prod
+      thresholdRange:
+        min: 99.999  # 99.999% batch tracking accuracy
+      interval: 120s
+      
+    - name: manufacturing-contamination-risk
+      templateRef:
+        name: manufacturing-contamination-risk
+        namespace: manufacturing-prod
+      thresholdRange:
+        max: 0.001  # 0.001% max contamination risk
+      interval: 60s
+    
+    # FDA-compliant webhooks
+    webhooks:
+    - name: manufacturing-gmp-validation
+      type: pre-promotion
+      url: http://manufacturing-quality-control.manufacturing-prod.svc.cluster.local:8080/canary/gmp-validation
+      timeout: 60s
+      metadata:
+        compliance-framework: "FDA-21CFR11"
+        validation-type: "GMP"
+        quality-assurance: "required"
+        
+    - name: manufacturing-batch-safety-check
+      type: pre-promotion
+      url: http://manufacturing-safety-system.manufacturing-prod.svc.cluster.local:8080/canary/batch-safety
+      timeout: 45s
+      metadata:
+        safety-validation: "critical"
+        contamination-check: "required"
+        environmental-parameters: "validated"
+        
+    - name: manufacturing-regulatory-approval
+      type: confirm-promotion
+      url: http://manufacturing-regulatory.manufacturing-prod.svc.cluster.local:8080/canary/regulatory-approval
+      timeout: 120s
+      metadata:
+        approval-authority: "quality-assurance-manager"
+        fda-compliance: "validated"
+        documentation: "complete"
+        
+    - name: manufacturing-rollback-safety
+      type: rollback
+      url: http://manufacturing-safety-system.manufacturing-prod.svc.cluster.local:8080/canary/emergency-rollback
+      timeout: 30s
+      metadata:
+        emergency-contact: "manufacturing-oncall@company.com"
+        safety-protocol: "activated"
+        batch-protection: "enabled"
+        
+    - name: manufacturing-promotion-audit
+      type: promotion
+      url: http://manufacturing-audit-system.manufacturing-prod.svc.cluster.local:8080/canary/promotion-audit
+      timeout: 30s
+      metadata:
+        audit-trail: "complete"
+        fda-documentation: "required"
+        gmp-verification: "validated"
+  
+  # Autoscaling - disabled for manufacturing consistency
+  # autoscalerRef:
+  #   apiVersion: autoscaling/v2
+  #   kind: HorizontalPodAutoscaler
+  #   name: manufacturing-control-hpa
+    
+  # Extended timeline for manufacturing validation
+  progressDeadlineSeconds: 1800  # 30 minutes for manufacturing
+  
+  # Suspend during active manufacturing
+  suspend: false
+  
+  # Always analyze for manufacturing safety
+  skipAnalysis: false
+  
+  # Always revert on failure for safety
+  revertOnDeletion: true
+  
+  # Mandatory confirmation for FDA systems
+  confirmPromotion: true
+  
+  # Manufacturing-specific configuration
+  canaryReadyThreshold: 5  # Higher threshold for manufacturing
+  scaleUpDeadlineSeconds: 600  # Extended scale-up time
+  
+  # No session affinity for manufacturing consistency
+  # sessionAffinity: null
+  
+  # Mirror traffic for validation
+  mirrorWeight: 10  # Higher mirror weight for manufacturing validation
+  
+  # Custom resource annotations for FDA compliance
+  annotations:
+    flagger.app/manufacturing-schedule: "24/7-monitoring"
+    flagger.app/business-owner: "manufacturing-engineering-team"
+    flagger.app/escalation-path: "manufacturing-oncall@company.com"
+    flagger.app/regulatory-validation: "required"
+    flagger.app/fda-compliance: "mandatory"
+    flagger.app/gmp-validation: "required"
+    flagger.app/batch-safety: "critical"
+    flagger.app/rollback-window: "60s"
+    flagger.app/max-canary-duration: "60m"
+    flagger.app/pre-promotion-validation: "gmp-quality-safety"
+    flagger.app/post-promotion-monitoring: "extended-regulatory-compliance"
+    flagger.app/environmental-monitoring: "continuous"
+    flagger.app/contamination-monitoring: "active"
+    flagger.app/batch-integrity: "validated"
+    flagger.app/audit-trail: "complete"
+    flagger.app/quality-control: "automated"
+    flagger.app/equipment-monitoring: "real-time"
+    flagger.app/regulatory-reporting: "automated"
+    flagger.app/manufacturing-window: "exclude-cleaning-validation"

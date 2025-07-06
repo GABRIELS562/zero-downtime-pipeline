@@ -1,0 +1,171 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: trading-engine-business-metrics
+  namespace: trading-prod
+  labels:
+    app.kubernetes.io/name: trading-engine
+    business-domain: trading
+    metrics-type: business
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: trading-engine
+  endpoints:
+  - port: metrics
+    interval: 15s
+    path: /metrics/business
+    scrapeTimeout: 10s
+    honorLabels: true
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'trading_(revenue|orders|latency|risk|compliance|pnl)_.*'
+      action: keep
+    - sourceLabels: [__name__]
+      targetLabel: business_domain
+      replacement: trading
+    - sourceLabels: [__name__]
+      targetLabel: criticality
+      replacement: high
+  - port: metrics
+    interval: 5s
+    path: /metrics/trading/realtime
+    scrapeTimeout: 3s
+    honorLabels: true
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'trading_(market_data_latency|order_processing_duration)_.*'
+      action: keep
+    - sourceLabels: [__name__]
+      targetLabel: realtime_metric
+      replacement: true
+  namespaceSelector:
+    matchNames:
+    - trading-prod
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: manufacturing-control-business-metrics
+  namespace: manufacturing-prod
+  labels:
+    app.kubernetes.io/name: manufacturing-control
+    business-domain: manufacturing
+    metrics-type: business
+    compliance-framework: fda-21cfr11
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: manufacturing-control
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics/business
+    scrapeTimeout: 20s
+    honorLabels: true
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'manufacturing_(efficiency|quality|batch|compliance|audit|contamination|yield|deviation|equipment)_.*'
+      action: keep
+    - sourceLabels: [__name__]
+      targetLabel: business_domain
+      replacement: manufacturing
+    - sourceLabels: [__name__]
+      targetLabel: criticality
+      replacement: high
+    - sourceLabels: [__name__]
+      targetLabel: compliance_framework
+      replacement: fda-21cfr11
+  - port: metrics
+    interval: 15s
+    path: /metrics/manufacturing/environmental
+    scrapeTimeout: 10s
+    honorLabels: true
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'manufacturing_(temperature|humidity|pressure|cleanliness)_.*'
+      action: keep
+    - sourceLabels: [__name__]
+      targetLabel: environmental_metric
+      replacement: true
+  - port: metrics
+    interval: 60s
+    path: /metrics/manufacturing/regulatory
+    scrapeTimeout: 30s
+    honorLabels: true
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'manufacturing_(fda|gmp|iso13485)_.*'
+      action: keep
+    - sourceLabels: [__name__]
+      targetLabel: regulatory_metric
+      replacement: true
+  namespaceSelector:
+    matchNames:
+    - manufacturing-prod
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: flagger-canary-metrics
+  namespace: flagger-system
+  labels:
+    app.kubernetes.io/name: flagger
+    metrics-type: canary
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: flagger
+  endpoints:
+  - port: http
+    interval: 15s
+    path: /metrics
+    scrapeTimeout: 10s
+    honorLabels: true
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'flagger_(canary|rollout)_.*'
+      action: keep
+    - sourceLabels: [canary_name]
+      regex: '(trading-engine|manufacturing-control)'
+      action: keep
+    - sourceLabels: [canary_name]
+      targetLabel: business_application
+      replacement: '${1}'
+  namespaceSelector:
+    matchNames:
+    - flagger-system
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: istio-proxy-business-metrics
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/name: istio-proxy
+    metrics-type: business
+spec:
+  selector:
+    matchLabels:
+      app: istio-proxy
+  endpoints:
+  - port: http-monitoring
+    interval: 15s
+    path: /stats/prometheus
+    scrapeTimeout: 10s
+    honorLabels: true
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'istio_(request_duration_milliseconds|request_total|request_bytes|response_bytes).*'
+      action: keep
+    - sourceLabels: [destination_service_name]
+      regex: '(trading-engine|manufacturing-control)'
+      action: keep
+    - sourceLabels: [destination_service_name]
+      targetLabel: business_application
+      replacement: '${1}'
+  namespaceSelector:
+    matchNames:
+    - istio-system
+    - trading-prod
+    - manufacturing-prod

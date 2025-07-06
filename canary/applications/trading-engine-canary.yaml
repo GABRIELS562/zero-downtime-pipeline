@@ -1,0 +1,195 @@
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: trading-engine
+  namespace: trading-prod
+  labels:
+    app.kubernetes.io/name: trading-engine
+    app.kubernetes.io/component: financial-trading
+    business-criticality: critical
+    deployment-strategy: canary
+  annotations:
+    flagger.app/business-impact: "critical"
+    flagger.app/revenue-per-minute: "1000"
+    flagger.app/max-acceptable-latency: "50ms"
+    flagger.app/min-success-rate: "99.99"
+    flagger.app/financial-compliance: "mifid,sox,dodd-frank"
+spec:
+  # Trading service configuration
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: trading-engine
+  
+  # Production service configuration
+  service:
+    name: trading-engine
+    port: 8080
+    targetPort: 8080
+    gateways:
+    - trading-prod-gateway
+    hosts:
+    - trading-prod.company.com
+    trafficPolicy:
+      tls:
+        mode: ISTIO_MUTUAL
+    retries:
+      attempts: 3
+      perTryTimeout: 30s
+      retryOn: gateway-error,connect-failure,refused-stream
+    
+  # Advanced canary analysis for financial trading
+  analysis:
+    # Extended analysis for financial systems
+    interval: 30s
+    threshold: 10
+    maxWeight: 50
+    stepWeight: 10
+    stepWeights: [10, 20, 30, 40, 50]
+    stepWeightPromotion: 10
+    
+    # Financial trading metrics
+    metrics:
+    - name: trading-success-rate
+      templateRef:
+        name: trading-success-rate
+        namespace: trading-prod
+      thresholdRange:
+        min: 99.99
+      interval: 30s
+      
+    - name: trading-latency-p99
+      templateRef:
+        name: trading-latency-p99
+        namespace: trading-prod
+      thresholdRange:
+        max: 50
+      interval: 30s
+      
+    - name: trading-revenue-per-minute
+      templateRef:
+        name: trading-revenue-per-minute
+        namespace: trading-prod
+      thresholdRange:
+        min: 1000
+      interval: 60s
+      
+    - name: trading-risk-exposure
+      templateRef:
+        name: trading-risk-exposure
+        namespace: trading-prod
+      thresholdRange:
+        max: 10000000  # $10M max risk exposure
+      interval: 30s
+      
+    - name: trading-order-fill-rate
+      templateRef:
+        name: trading-order-fill-rate
+        namespace: trading-prod
+      thresholdRange:
+        min: 99.95
+      interval: 30s
+      
+    - name: trading-market-data-latency
+      templateRef:
+        name: trading-market-data-latency
+        namespace: trading-prod
+      thresholdRange:
+        max: 10  # 10ms max for market data
+      interval: 15s
+      
+    - name: trading-compliance-score
+      templateRef:
+        name: trading-compliance-score
+        namespace: trading-prod
+      thresholdRange:
+        min: 100  # Perfect compliance required
+      interval: 60s
+      
+    - name: trading-position-accuracy
+      templateRef:
+        name: trading-position-accuracy
+        namespace: trading-prod
+      thresholdRange:
+        min: 99.999  # 99.999% position accuracy
+      interval: 30s
+    
+    # Webhooks for business notifications
+    webhooks:
+    - name: trading-promotion-gate
+      type: pre-promotion
+      url: http://trading-risk-manager.trading-prod.svc.cluster.local:8080/canary/pre-promotion
+      timeout: 30s
+      metadata:
+        business-unit: "trading"
+        risk-threshold: "medium"
+        approval-required: "true"
+        
+    - name: trading-rollback-gate
+      type: rollback
+      url: http://trading-risk-manager.trading-prod.svc.cluster.local:8080/canary/rollback
+      timeout: 15s
+      metadata:
+        business-unit: "trading"
+        emergency-contact: "trading-oncall@company.com"
+        
+    - name: trading-promotion-success
+      type: promotion
+      url: http://trading-notifications.trading-prod.svc.cluster.local:8080/canary/promotion-success
+      timeout: 10s
+      metadata:
+        notification-channels: "slack,email,teams"
+        business-stakeholders: "trading-leads@company.com"
+        
+    - name: trading-canary-confirm
+      type: confirm-promotion
+      url: http://trading-risk-manager.trading-prod.svc.cluster.local:8080/canary/confirm-promotion
+      timeout: 30s
+      metadata:
+        final-validation: "true"
+        business-sign-off: "required"
+  
+  # Autoscaling configuration
+  autoscalerRef:
+    apiVersion: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    name: trading-engine-hpa
+    
+  # Progressive delivery configuration
+  progressDeadlineSeconds: 600
+  
+  # Suspend canary analysis during trading hours
+  suspend: false
+  
+  # Skip analysis if no traffic
+  skipAnalysis: false
+  
+  # Revert on failure
+  revertOnDeletion: true
+  
+  # Confirmation required for promotion
+  confirmPromotion: true
+  
+  # Extended canary configuration
+  canaryReadyThreshold: 3
+  scaleUpDeadlineSeconds: 300
+  
+  # Session affinity for trading clients
+  sessionAffinity:
+    cookieName: "trading-session"
+    maxAge: 3600
+    
+  # Mirror traffic for shadow testing
+  mirrorWeight: 5
+  
+  # Custom resource annotations
+  annotations:
+    flagger.app/trading-hours: "13:30-20:00 EST"
+    flagger.app/business-owner: "trading-platform-team"
+    flagger.app/escalation-path: "trading-oncall@company.com"
+    flagger.app/compliance-validation: "required"
+    flagger.app/financial-impact: "critical"
+    flagger.app/rollback-window: "30s"
+    flagger.app/max-canary-duration: "30m"
+    flagger.app/pre-promotion-validation: "trading-risk-assessment"
+    flagger.app/post-promotion-monitoring: "extended-business-metrics"

@@ -1,0 +1,252 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: business-metrics-recording-rules
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: business-metrics
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+  - name: trading.business.metrics
+    interval: 15s
+    rules:
+    # Trading Revenue Metrics
+    - record: trading:revenue_per_minute
+      expr: |
+        sum(rate(trading_revenue_usd_total[1m])) * 60
+      labels:
+        business_domain: "trading"
+        metric_type: "revenue"
+        
+    - record: trading:revenue_per_hour
+      expr: |
+        sum(rate(trading_revenue_usd_total[1h])) * 3600
+      labels:
+        business_domain: "trading"
+        metric_type: "revenue"
+        
+    # Trading Performance Metrics
+    - record: trading:order_success_rate
+      expr: |
+        sum(rate(trading_orders_successful_total[1m])) /
+        sum(rate(trading_orders_total[1m])) * 100
+      labels:
+        business_domain: "trading"
+        metric_type: "performance"
+        
+    - record: trading:order_latency_p50
+      expr: |
+        histogram_quantile(0.50,
+          sum(rate(trading_order_processing_duration_seconds_bucket[1m])) by (le)
+        ) * 1000
+      labels:
+        business_domain: "trading"
+        metric_type: "latency"
+        
+    - record: trading:order_latency_p95
+      expr: |
+        histogram_quantile(0.95,
+          sum(rate(trading_order_processing_duration_seconds_bucket[1m])) by (le)
+        ) * 1000
+      labels:
+        business_domain: "trading"
+        metric_type: "latency"
+        
+    - record: trading:order_latency_p99
+      expr: |
+        histogram_quantile(0.99,
+          sum(rate(trading_order_processing_duration_seconds_bucket[1m])) by (le)
+        ) * 1000
+      labels:
+        business_domain: "trading"
+        metric_type: "latency"
+        
+    # Trading Risk Metrics
+    - record: trading:risk_exposure_current
+      expr: |
+        sum(trading_position_risk_exposure_usd)
+      labels:
+        business_domain: "trading"
+        metric_type: "risk"
+        
+    - record: trading:var_95_daily
+      expr: |
+        trading_value_at_risk_95_daily_usd
+      labels:
+        business_domain: "trading"
+        metric_type: "risk"
+        
+    # Trading Compliance Metrics
+    - record: trading:compliance_score_avg
+      expr: |
+        avg(trading_compliance_score)
+      labels:
+        business_domain: "trading"
+        metric_type: "compliance"
+        
+    - record: trading:market_data_latency_p95
+      expr: |
+        histogram_quantile(0.95,
+          sum(rate(trading_market_data_latency_seconds_bucket[1m])) by (le)
+        ) * 1000
+      labels:
+        business_domain: "trading"
+        metric_type: "latency"
+        
+  - name: manufacturing.business.metrics
+    interval: 30s
+    rules:
+    # Manufacturing Efficiency Metrics
+    - record: manufacturing:efficiency_current
+      expr: |
+        (sum(rate(manufacturing_production_output_units_total[5m])) /
+         sum(rate(manufacturing_production_capacity_units_total[5m]))) * 100
+      labels:
+        business_domain: "manufacturing"
+        metric_type: "efficiency"
+        
+    - record: manufacturing:efficiency_hourly
+      expr: |
+        (sum(rate(manufacturing_production_output_units_total[1h])) /
+         sum(rate(manufacturing_production_capacity_units_total[1h]))) * 100
+      labels:
+        business_domain: "manufacturing"
+        metric_type: "efficiency"
+        
+    # Manufacturing Quality Metrics
+    - record: manufacturing:quality_score_current
+      expr: |
+        sum(rate(manufacturing_quality_passed_batches_total[5m])) /
+        sum(rate(manufacturing_quality_total_batches_total[5m])) * 100
+      labels:
+        business_domain: "manufacturing"
+        metric_type: "quality"
+        
+    - record: manufacturing:batch_success_rate
+      expr: |
+        sum(rate(manufacturing_batch_completed_successfully_total[10m])) /
+        sum(rate(manufacturing_batch_started_total[10m])) * 100
+      labels:
+        business_domain: "manufacturing"
+        metric_type: "quality"
+        
+    - record: manufacturing:yield_rate_current
+      expr: |
+        sum(manufacturing_actual_yield_units) /
+        sum(manufacturing_theoretical_yield_units) * 100
+      labels:
+        business_domain: "manufacturing"
+        metric_type: "quality"
+        
+    # Manufacturing Compliance Metrics
+    - record: manufacturing:environmental_compliance
+      expr: |
+        min(
+          min(manufacturing_temperature_compliance_status) * 100,
+          min(manufacturing_humidity_compliance_status) * 100,
+          min(manufacturing_pressure_compliance_status) * 100,
+          min(manufacturing_cleanliness_compliance_status) * 100
+        )
+      labels:
+        business_domain: "manufacturing"
+        metric_type: "compliance"
+        
+    - record: manufacturing:regulatory_compliance_score
+      expr: |
+        min(
+          manufacturing_fda_compliance_score,
+          manufacturing_gmp_compliance_score,
+          manufacturing_iso13485_compliance_score
+        )
+      labels:
+        business_domain: "manufacturing"
+        metric_type: "compliance"
+        
+    - record: manufacturing:audit_trail_integrity
+      expr: |
+        sum(rate(manufacturing_audit_trail_records_verified_total[5m])) /
+        sum(rate(manufacturing_audit_trail_records_total[5m])) * 100
+      labels:
+        business_domain: "manufacturing"
+        metric_type: "compliance"
+        
+    # Manufacturing Safety Metrics
+    - record: manufacturing:contamination_risk
+      expr: |
+        sum(rate(manufacturing_contamination_events_total[10m])) /
+        sum(rate(manufacturing_production_events_total[10m])) * 100
+      labels:
+        business_domain: "manufacturing"
+        metric_type: "safety"
+        
+    - record: manufacturing:deviation_rate
+      expr: |
+        sum(rate(manufacturing_process_deviations_total[10m])) /
+        sum(rate(manufacturing_process_operations_total[10m])) * 100
+      labels:
+        business_domain: "manufacturing"
+        metric_type: "safety"
+        
+    - record: manufacturing:equipment_health_avg
+      expr: |
+        avg(manufacturing_equipment_health_score)
+      labels:
+        business_domain: "manufacturing"
+        metric_type: "equipment"
+        
+  - name: business.critical.slos
+    interval: 30s
+    rules:
+    # Trading SLOs
+    - record: slo:trading_availability_30d
+      expr: |
+        avg_over_time(up{job="trading-engine"}[30d]) * 100
+      labels:
+        business_domain: "trading"
+        slo_type: "availability"
+        slo_period: "30d"
+        
+    - record: slo:trading_latency_p99_30d
+      expr: |
+        histogram_quantile(0.99,
+          avg_over_time(trading_order_processing_duration_seconds_bucket[30d])
+        ) * 1000
+      labels:
+        business_domain: "trading"
+        slo_type: "latency"
+        slo_period: "30d"
+        
+    - record: slo:trading_success_rate_30d
+      expr: |
+        avg_over_time(trading:order_success_rate[30d])
+      labels:
+        business_domain: "trading"
+        slo_type: "success_rate"
+        slo_period: "30d"
+        
+    # Manufacturing SLOs
+    - record: slo:manufacturing_availability_30d
+      expr: |
+        avg_over_time(up{job="manufacturing-control"}[30d]) * 100
+      labels:
+        business_domain: "manufacturing"
+        slo_type: "availability"
+        slo_period: "30d"
+        
+    - record: slo:manufacturing_efficiency_30d
+      expr: |
+        avg_over_time(manufacturing:efficiency_current[30d])
+      labels:
+        business_domain: "manufacturing"
+        slo_type: "efficiency"
+        slo_period: "30d"
+        
+    - record: slo:manufacturing_quality_30d
+      expr: |
+        avg_over_time(manufacturing:quality_score_current[30d])
+      labels:
+        business_domain: "manufacturing"
+        slo_type: "quality"
+        slo_period: "30d"

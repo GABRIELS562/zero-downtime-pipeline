@@ -1,0 +1,159 @@
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: trading-success-rate
+  namespace: trading-prod
+  labels:
+    app.kubernetes.io/name: trading-metrics
+    business-domain: financial-trading
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    sum(rate(trading_orders_successful_total{namespace="trading-prod"}[1m])) /
+    sum(rate(trading_orders_total{namespace="trading-prod"}[1m])) * 100
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: trading-latency-p99
+  namespace: trading-prod
+  labels:
+    app.kubernetes.io/name: trading-metrics
+    business-domain: financial-trading
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    histogram_quantile(0.99,
+      sum(rate(trading_order_processing_duration_seconds_bucket{namespace="trading-prod"}[1m])) by (le)
+    ) * 1000
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: trading-revenue-per-minute
+  namespace: trading-prod
+  labels:
+    app.kubernetes.io/name: trading-metrics
+    business-domain: financial-trading
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    sum(rate(trading_revenue_usd_total{namespace="trading-prod"}[1m])) * 60
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: trading-risk-exposure
+  namespace: trading-prod
+  labels:
+    app.kubernetes.io/name: trading-metrics
+    business-domain: financial-trading
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    sum(trading_position_risk_exposure_usd{namespace="trading-prod"})
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: trading-order-fill-rate
+  namespace: trading-prod
+  labels:
+    app.kubernetes.io/name: trading-metrics
+    business-domain: financial-trading
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    sum(rate(trading_orders_filled_total{namespace="trading-prod"}[1m])) /
+    sum(rate(trading_orders_submitted_total{namespace="trading-prod"}[1m])) * 100
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: trading-market-data-latency
+  namespace: trading-prod
+  labels:
+    app.kubernetes.io/name: trading-metrics
+    business-domain: financial-trading
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    histogram_quantile(0.95,
+      sum(rate(trading_market_data_latency_seconds_bucket{namespace="trading-prod"}[1m])) by (le)
+    ) * 1000
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: trading-compliance-score
+  namespace: trading-prod
+  labels:
+    app.kubernetes.io/name: trading-metrics
+    business-domain: financial-trading
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    avg(trading_compliance_score{namespace="trading-prod"})
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: trading-position-accuracy
+  namespace: trading-prod
+  labels:
+    app.kubernetes.io/name: trading-metrics
+    business-domain: financial-trading
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    sum(rate(trading_position_updates_accurate_total{namespace="trading-prod"}[1m])) /
+    sum(rate(trading_position_updates_total{namespace="trading-prod"}[1m])) * 100
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: trading-system-health
+  namespace: trading-prod
+  labels:
+    app.kubernetes.io/name: trading-metrics
+    business-domain: financial-trading
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    avg(up{job="trading-engine", namespace="trading-prod"}) * 100
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: trading-pnl-accuracy
+  namespace: trading-prod
+  labels:
+    app.kubernetes.io/name: trading-metrics
+    business-domain: financial-trading
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring.svc.cluster.local:9090
+  query: |
+    abs(
+      sum(trading_pnl_calculated_usd{namespace="trading-prod"}) - 
+      sum(trading_pnl_actual_usd{namespace="trading-prod"})
+    ) / sum(abs(trading_pnl_actual_usd{namespace="trading-prod"})) * 100

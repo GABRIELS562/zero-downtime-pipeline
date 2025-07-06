@@ -1,0 +1,395 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flagger-webhook-config
+  namespace: flagger-system
+  labels:
+    app.kubernetes.io/name: flagger
+    component: webhook-notifications
+data:
+  webhook-config.yaml: |
+    # Flagger webhook configuration for business-aware notifications
+    webhooks:
+      # Trading webhooks
+      trading-pre-promotion:
+        url: "http://trading-risk-manager.trading-prod.svc.cluster.local:8080/canary/pre-promotion"
+        timeout: 30s
+        metadata:
+          business-unit: "trading"
+          risk-assessment: "required"
+          approval-process: "automated"
+        headers:
+          Authorization: "Bearer {{ .Token }}"
+          Content-Type: "application/json"
+          X-Business-Domain: "trading"
+          X-Risk-Level: "high"
+          X-Compliance-Framework: "mifid,sox,dodd-frank"
+        template: |
+          {
+            "canary": {
+              "name": "{{ .Canary.Name }}",
+              "namespace": "{{ .Canary.Namespace }}",
+              "phase": "{{ .Canary.Phase }}",
+              "metrics": {
+                "success_rate": {{ .Canary.Analysis.SuccessRate }},
+                "latency_p99": {{ .Canary.Analysis.LatencyP99 }},
+                "revenue_per_minute": {{ .Canary.Analysis.RevenuePerMinute }},
+                "risk_exposure": {{ .Canary.Analysis.RiskExposure }}
+              },
+              "business_context": {
+                "revenue_impact": "{{ .Canary.Annotations.RevenueImpact }}",
+                "trading_hours": "{{ .Canary.Annotations.TradingHours }}",
+                "compliance_required": {{ .Canary.Annotations.ComplianceRequired }},
+                "max_risk_exposure": {{ .Canary.Annotations.MaxRiskExposure }}
+              },
+              "promotion_criteria": {
+                "success_rate_threshold": 99.99,
+                "latency_threshold": 50,
+                "revenue_threshold": 1000,
+                "risk_threshold": 10000000
+              }
+            },
+            "timestamp": "{{ .Timestamp }}",
+            "requestId": "{{ .RequestId }}"
+          }
+
+      trading-rollback:
+        url: "http://trading-risk-manager.trading-prod.svc.cluster.local:8080/canary/rollback"
+        timeout: 15s
+        metadata:
+          business-unit: "trading"
+          emergency-contact: "trading-oncall@company.com"
+          immediate-action: "required"
+        headers:
+          Authorization: "Bearer {{ .Token }}"
+          Content-Type: "application/json"
+          X-Business-Domain: "trading"
+          X-Emergency-Level: "high"
+          X-Rollback-Reason: "{{ .Canary.RollbackReason }}"
+        template: |
+          {
+            "canary": {
+              "name": "{{ .Canary.Name }}",
+              "namespace": "{{ .Canary.Namespace }}",
+              "phase": "rollback",
+              "rollback_reason": "{{ .Canary.RollbackReason }}",
+              "failed_metrics": [
+                {{- range $index, $metric := .Canary.FailedMetrics }}
+                {{- if $index }}, {{ end }}
+                {
+                  "name": "{{ $metric.Name }}",
+                  "value": {{ $metric.Value }},
+                  "threshold": {{ $metric.Threshold }},
+                  "business_impact": "{{ $metric.BusinessImpact }}"
+                }
+                {{- end }}
+              ],
+              "business_impact": {
+                "revenue_loss_estimate": {{ .Canary.Analysis.RevenueLossEstimate }},
+                "customer_impact": "{{ .Canary.Analysis.CustomerImpact }}",
+                "trading_disruption": {{ .Canary.Analysis.TradingDisruption }}
+              }
+            },
+            "emergency_actions": {
+              "trading_halt": {{ .EmergencyActions.TradingHalt }},
+              "risk_team_notified": {{ .EmergencyActions.RiskTeamNotified }},
+              "stakeholder_alert": {{ .EmergencyActions.StakeholderAlert }}
+            },
+            "timestamp": "{{ .Timestamp }}",
+            "requestId": "{{ .RequestId }}"
+          }
+
+      trading-promotion-success:
+        url: "http://trading-notifications.trading-prod.svc.cluster.local:8080/canary/promotion-success"
+        timeout: 10s
+        metadata:
+          business-unit: "trading"
+          notification-channels: "slack,email,teams"
+          business-stakeholders: "trading-leads@company.com"
+        headers:
+          Authorization: "Bearer {{ .Token }}"
+          Content-Type: "application/json"
+          X-Business-Domain: "trading"
+          X-Success-Type: "promotion"
+        template: |
+          {
+            "canary": {
+              "name": "{{ .Canary.Name }}",
+              "namespace": "{{ .Canary.Namespace }}",
+              "phase": "promotion_success",
+              "deployment_duration": "{{ .Canary.DeploymentDuration }}",
+              "final_metrics": {
+                "success_rate": {{ .Canary.Analysis.FinalSuccessRate }},
+                "latency_p99": {{ .Canary.Analysis.FinalLatencyP99 }},
+                "revenue_per_minute": {{ .Canary.Analysis.FinalRevenuePerMinute }}
+              },
+              "business_validation": {
+                "revenue_impact": "{{ .Canary.BusinessValidation.RevenueImpact }}",
+                "performance_improvement": "{{ .Canary.BusinessValidation.PerformanceImprovement }}",
+                "feature_rollout": "{{ .Canary.BusinessValidation.FeatureRollout }}"
+              }
+            },
+            "notifications": {
+              "slack": {
+                "channel": "#trading-deployments",
+                "message": "✅ Trading canary deployment successful for {{ .Canary.Name }}"
+              },
+              "email": {
+                "recipients": ["trading-leads@company.com"],
+                "subject": "Trading Canary Success: {{ .Canary.Name }}"
+              }
+            },
+            "timestamp": "{{ .Timestamp }}",
+            "requestId": "{{ .RequestId }}"
+          }
+
+      # Manufacturing webhooks
+      manufacturing-gmp-validation:
+        url: "http://manufacturing-quality-control.manufacturing-prod.svc.cluster.local:8080/canary/gmp-validation"
+        timeout: 60s
+        metadata:
+          compliance-framework: "FDA-21CFR11"
+          validation-type: "GMP"
+          quality-assurance: "required"
+        headers:
+          Authorization: "Bearer {{ .Token }}"
+          Content-Type: "application/json"
+          X-Business-Domain: "manufacturing"
+          X-Compliance-Framework: "FDA-21CFR11"
+          X-Validation-Type: "GMP"
+        template: |
+          {
+            "canary": {
+              "name": "{{ .Canary.Name }}",
+              "namespace": "{{ .Canary.Namespace }}",
+              "phase": "{{ .Canary.Phase }}",
+              "metrics": {
+                "efficiency": {{ .Canary.Analysis.Efficiency }},
+                "quality_score": {{ .Canary.Analysis.QualityScore }},
+                "batch_success_rate": {{ .Canary.Analysis.BatchSuccessRate }},
+                "environmental_compliance": {{ .Canary.Analysis.EnvironmentalCompliance }}
+              },
+              "compliance_context": {
+                "fda_validated": {{ .Canary.Annotations.FDAValidated }},
+                "gmp_compliant": {{ .Canary.Annotations.GMPCompliant }},
+                "batch_cost_per_failure": {{ .Canary.Annotations.BatchCostPerFailure }},
+                "min_efficiency": {{ .Canary.Annotations.MinEfficiency }}
+              },
+              "validation_criteria": {
+                "efficiency_threshold": 98.0,
+                "quality_threshold": 99.9,
+                "batch_success_threshold": 99.95,
+                "environmental_compliance_threshold": 100.0
+              }
+            },
+            "regulatory_requirements": {
+              "fda_21cfr11": {
+                "electronic_signatures": true,
+                "audit_trail": true,
+                "data_integrity": true
+              },
+              "gmp": {
+                "quality_control": true,
+                "batch_records": true,
+                "environmental_monitoring": true
+              }
+            },
+            "timestamp": "{{ .Timestamp }}",
+            "requestId": "{{ .RequestId }}"
+          }
+
+      manufacturing-batch-safety:
+        url: "http://manufacturing-safety-system.manufacturing-prod.svc.cluster.local:8080/canary/batch-safety"
+        timeout: 45s
+        metadata:
+          safety-validation: "critical"
+          contamination-check: "required"
+          environmental-parameters: "validated"
+        headers:
+          Authorization: "Bearer {{ .Token }}"
+          Content-Type: "application/json"
+          X-Business-Domain: "manufacturing"
+          X-Safety-Level: "critical"
+          X-Batch-Protection: "enabled"
+        template: |
+          {
+            "canary": {
+              "name": "{{ .Canary.Name }}",
+              "namespace": "{{ .Canary.Namespace }}",
+              "phase": "{{ .Canary.Phase }}",
+              "safety_metrics": {
+                "contamination_risk": {{ .Canary.Analysis.ContaminationRisk }},
+                "equipment_health": {{ .Canary.Analysis.EquipmentHealth }},
+                "environmental_parameters": {
+                  "temperature": {{ .Canary.Analysis.Temperature }},
+                  "humidity": {{ .Canary.Analysis.Humidity }},
+                  "pressure": {{ .Canary.Analysis.Pressure }},
+                  "cleanliness": {{ .Canary.Analysis.Cleanliness }}
+                }
+              },
+              "batch_context": {
+                "active_batches": {{ .Canary.BatchContext.ActiveBatches }},
+                "batch_value": {{ .Canary.BatchContext.BatchValue }},
+                "manufacturing_schedule": "{{ .Canary.BatchContext.ManufacturingSchedule }}"
+              }
+            },
+            "safety_validation": {
+              "contamination_check": {
+                "required": true,
+                "threshold": 0.001,
+                "monitoring": "continuous"
+              },
+              "equipment_validation": {
+                "required": true,
+                "health_threshold": 99.0,
+                "calibration_status": "validated"
+              },
+              "environmental_monitoring": {
+                "required": true,
+                "compliance_check": "continuous",
+                "deviation_alerts": "enabled"
+              }
+            },
+            "timestamp": "{{ .Timestamp }}",
+            "requestId": "{{ .RequestId }}"
+          }
+
+      manufacturing-regulatory-approval:
+        url: "http://manufacturing-regulatory.manufacturing-prod.svc.cluster.local:8080/canary/regulatory-approval"
+        timeout: 120s
+        metadata:
+          approval-authority: "quality-assurance-manager"
+          fda-compliance: "validated"
+          documentation: "complete"
+        headers:
+          Authorization: "Bearer {{ .Token }}"
+          Content-Type: "application/json"
+          X-Business-Domain: "manufacturing"
+          X-Approval-Level: "regulatory"
+          X-Compliance-Framework: "FDA-21CFR11"
+        template: |
+          {
+            "canary": {
+              "name": "{{ .Canary.Name }}",
+              "namespace": "{{ .Canary.Namespace }}",
+              "phase": "regulatory_approval",
+              "regulatory_metrics": {
+                "fda_compliance_score": {{ .Canary.Analysis.FDAComplianceScore }},
+                "gmp_compliance_score": {{ .Canary.Analysis.GMPComplianceScore }},
+                "audit_trail_integrity": {{ .Canary.Analysis.AuditTrailIntegrity }},
+                "regulatory_compliance": {{ .Canary.Analysis.RegulatoryCompliance }}
+              },
+              "validation_summary": {
+                "deployment_validated": {{ .Canary.ValidationSummary.DeploymentValidated }},
+                "compliance_verified": {{ .Canary.ValidationSummary.ComplianceVerified }},
+                "quality_approved": {{ .Canary.ValidationSummary.QualityApproved }},
+                "safety_confirmed": {{ .Canary.ValidationSummary.SafetyConfirmed }}
+              }
+            },
+            "regulatory_approval": {
+              "required_approvals": [
+                "quality-assurance-manager",
+                "regulatory-affairs-lead",
+                "manufacturing-director"
+              ],
+              "documentation_checklist": {
+                "validation_report": "complete",
+                "compliance_assessment": "complete",
+                "risk_analysis": "complete",
+                "change_control": "complete"
+              },
+              "approval_criteria": {
+                "fda_compliance": 100.0,
+                "gmp_compliance": 100.0,
+                "audit_trail": 100.0,
+                "quality_metrics": 99.9
+              }
+            },
+            "timestamp": "{{ .Timestamp }}",
+            "requestId": "{{ .RequestId }}"
+          }
+
+      # Generic notification webhooks
+      slack-notifications:
+        url: "https://hooks.slack.com/services/YOUR_SLACK_WEBHOOK"
+        timeout: 10s
+        metadata:
+          notification-type: "slack"
+          channel-routing: "dynamic"
+        headers:
+          Content-Type: "application/json"
+        template: |
+          {
+            "channel": "{{ if eq .Canary.Namespace \"trading-prod\" }}#trading-deployments{{ else if eq .Canary.Namespace \"manufacturing-prod\" }}#manufacturing-deployments{{ else }}#deployments{{ end }}",
+            "username": "Flagger",
+            "icon_emoji": ":rocket:",
+            "text": "{{ if eq .Canary.Phase \"promotion\" }}✅ Canary promotion successful{{ else if eq .Canary.Phase \"rollback\" }}⚠️ Canary rollback executed{{ else }}🔄 Canary analysis in progress{{ end }}",
+            "attachments": [
+              {
+                "color": "{{ if eq .Canary.Phase \"promotion\" }}good{{ else if eq .Canary.Phase \"rollback\" }}danger{{ else }}warning{{ end }}",
+                "title": "{{ .Canary.Name }} - {{ .Canary.Phase }}",
+                "fields": [
+                  {
+                    "title": "Environment",
+                    "value": "{{ .Canary.Namespace }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Business Domain",
+                    "value": "{{ .Canary.Labels.BusinessDomain }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Phase",
+                    "value": "{{ .Canary.Phase }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Duration",
+                    "value": "{{ .Canary.DeploymentDuration }}",
+                    "short": true
+                  }
+                ],
+                "actions": [
+                  {
+                    "type": "button",
+                    "text": "View Dashboard",
+                    "url": "https://grafana.company.com/d/{{ .Canary.Labels.BusinessDomain }}-canary"
+                  },
+                  {
+                    "type": "button",
+                    "text": "ArgoCD",
+                    "url": "https://argocd.company.com/applications/{{ .Canary.Name }}"
+                  }
+                ]
+              }
+            ]
+          }
+
+      email-notifications:
+        url: "http://email-service.monitoring.svc.cluster.local:8080/send"
+        timeout: 15s
+        metadata:
+          notification-type: "email"
+          template: "canary-deployment"
+        headers:
+          Authorization: "Bearer {{ .Token }}"
+          Content-Type: "application/json"
+        template: |
+          {
+            "to": [
+              "{{ if eq .Canary.Namespace \"trading-prod\" }}trading-leads@company.com{{ else if eq .Canary.Namespace \"manufacturing-prod\" }}manufacturing-leads@company.com{{ else }}platform-team@company.com{{ end }}"
+            ],
+            "subject": "Canary Deployment {{ .Canary.Phase | title }}: {{ .Canary.Name }}",
+            "template": "canary-deployment",
+            "data": {
+              "canary_name": "{{ .Canary.Name }}",
+              "namespace": "{{ .Canary.Namespace }}",
+              "phase": "{{ .Canary.Phase }}",
+              "business_domain": "{{ .Canary.Labels.BusinessDomain }}",
+              "deployment_duration": "{{ .Canary.DeploymentDuration }}",
+              "metrics": {{ toJson .Canary.Analysis }},
+              "dashboard_url": "https://grafana.company.com/d/{{ .Canary.Labels.BusinessDomain }}-canary",
+              "argocd_url": "https://argocd.company.com/applications/{{ .Canary.Name }}"
+            }
+          }

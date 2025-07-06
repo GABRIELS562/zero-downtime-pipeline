@@ -1,0 +1,294 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: canary-notification-templates
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager
+    component: notification-templates
+data:
+  trading-canary.tmpl: |
+    {{ define "trading.canary.title" }}
+    {{ if eq .Status "firing" }}
+    🚨 Trading Canary Alert - {{ .GroupLabels.canary_name }}
+    {{ else }}
+    ✅ Trading Canary Resolved - {{ .GroupLabels.canary_name }}
+    {{ end }}
+    {{ end }}
+
+    {{ define "trading.canary.body" }}
+    *Trading Canary Deployment Alert*
+    
+    *Application*: {{ .GroupLabels.canary_name }}
+    *Environment*: {{ .GroupLabels.environment }}
+    *Status*: {{ .Status | toUpper }}
+    *Business Impact*: {{ .CommonAnnotations.business_impact }}
+    *Revenue Impact*: {{ .CommonAnnotations.revenue_impact }}
+    
+    {{ if eq .Status "firing" }}
+    *Failed Metrics*:
+    {{ range .Alerts }}
+    • *{{ .Labels.metric_name }}*: {{ .Labels.metric_value }} (Threshold: {{ .Labels.threshold }})
+      - {{ .Annotations.summary }}
+      - Business Impact: {{ .Annotations.business_impact }}
+      - Revenue Impact: {{ .Annotations.revenue_impact }}
+    {{ end }}
+    
+    *Actions Taken*:
+    - Automatic rollback: {{ .CommonAnnotations.rollback_status }}
+    - Risk assessment: {{ .CommonAnnotations.risk_assessment }}
+    - Stakeholder notification: {{ .CommonAnnotations.stakeholder_notification }}
+    
+    *Next Steps*:
+    1. Verify rollback completion
+    2. Assess trading system health
+    3. Review deployment metrics
+    4. Plan remediation
+    
+    {{ else }}
+    *Resolved Metrics*:
+    {{ range .Alerts }}
+    • *{{ .Labels.metric_name }}*: {{ .Labels.metric_value }} (Target: {{ .Labels.threshold }})
+    {{ end }}
+    {{ end }}
+    
+    *Contacts*:
+    - On-call: trading-oncall@company.com
+    - Business Owner: {{ .CommonAnnotations.business_owner }}
+    - Risk Manager: {{ .CommonAnnotations.risk_manager }}
+    
+    *Links*:
+    - Dashboard: https://grafana.company.com/d/trading-canary
+    - ArgoCD: https://argocd.company.com/applications/trading-engine-prod
+    - Runbook: https://runbook.company.com/trading/canary-failure
+    {{ end }}
+
+  manufacturing-canary.tmpl: |
+    {{ define "manufacturing.canary.title" }}
+    {{ if eq .Status "firing" }}
+    ⚠️ Manufacturing Canary Alert - {{ .GroupLabels.canary_name }}
+    {{ else }}
+    ✅ Manufacturing Canary Resolved - {{ .GroupLabels.canary_name }}
+    {{ end }}
+    {{ end }}
+
+    {{ define "manufacturing.canary.body" }}
+    *Manufacturing Canary Deployment Alert*
+    
+    *Application*: {{ .GroupLabels.canary_name }}
+    *Environment*: {{ .GroupLabels.environment }}
+    *Status*: {{ .Status | toUpper }}
+    *Compliance Framework*: {{ .CommonAnnotations.compliance_framework }}
+    *Batch Impact*: {{ .CommonAnnotations.batch_impact }}
+    *Regulatory Impact*: {{ .CommonAnnotations.regulatory_impact }}
+    
+    {{ if eq .Status "firing" }}
+    *Failed Metrics*:
+    {{ range .Alerts }}
+    • *{{ .Labels.metric_name }}*: {{ .Labels.metric_value }} (Threshold: {{ .Labels.threshold }})
+      - {{ .Annotations.summary }}
+      - FDA Impact: {{ .Annotations.fda_impact }}
+      - GMP Impact: {{ .Annotations.gmp_impact }}
+      - Batch Risk: {{ .Annotations.batch_risk }}
+    {{ end }}
+    
+    *Regulatory Status*:
+    - FDA Compliance: {{ .CommonAnnotations.fda_compliance }}
+    - GMP Compliance: {{ .CommonAnnotations.gmp_compliance }}
+    - Audit Trail: {{ .CommonAnnotations.audit_trail }}
+    - Quality Control: {{ .CommonAnnotations.quality_control }}
+    
+    *Actions Taken*:
+    - Automatic rollback: {{ .CommonAnnotations.rollback_status }}
+    - Batch protection: {{ .CommonAnnotations.batch_protection }}
+    - Quality hold: {{ .CommonAnnotations.quality_hold }}
+    - Regulatory notification: {{ .CommonAnnotations.regulatory_notification }}
+    
+    *Next Steps*:
+    1. Verify rollback completion
+    2. Assess manufacturing system health
+    3. Review compliance status
+    4. Coordinate with quality team
+    5. Prepare regulatory documentation
+    
+    {{ else }}
+    *Resolved Metrics*:
+    {{ range .Alerts }}
+    • *{{ .Labels.metric_name }}*: {{ .Labels.metric_value }} (Target: {{ .Labels.threshold }})
+    {{ end }}
+    {{ end }}
+    
+    *Contacts*:
+    - Manufacturing On-call: manufacturing-oncall@company.com
+    - Quality Assurance: quality-assurance@company.com
+    - Regulatory Affairs: regulatory-affairs@company.com
+    - Business Owner: {{ .CommonAnnotations.business_owner }}
+    
+    *Links*:
+    - Dashboard: https://grafana.company.com/d/manufacturing-canary
+    - ArgoCD: https://argocd.company.com/applications/manufacturing-control-prod
+    - Compliance Portal: https://compliance.company.com/manufacturing
+    - Runbook: https://runbook.company.com/manufacturing/canary-failure
+    {{ end }}
+
+  canary-success.tmpl: |
+    {{ define "canary.success.title" }}
+    ✅ Canary Deployment Success - {{ .GroupLabels.canary_name }}
+    {{ end }}
+
+    {{ define "canary.success.body" }}
+    *Canary Deployment Successfully Completed*
+    
+    *Application*: {{ .GroupLabels.canary_name }}
+    *Environment*: {{ .GroupLabels.environment }}
+    *Business Domain*: {{ .GroupLabels.business_domain }}
+    *Deployment Type*: {{ .CommonAnnotations.deployment_type }}
+    
+    *Success Metrics*:
+    {{ range .Alerts }}
+    • *{{ .Labels.metric_name }}*: {{ .Labels.metric_value }} (Target: {{ .Labels.threshold }})
+      - Status: ✅ PASSED
+      - Performance: {{ .Annotations.performance_rating }}
+    {{ end }}
+    
+    *Deployment Summary*:
+    - Duration: {{ .CommonAnnotations.deployment_duration }}
+    - Promotion Type: {{ .CommonAnnotations.promotion_type }}
+    - Validation Status: {{ .CommonAnnotations.validation_status }}
+    - Business Validation: {{ .CommonAnnotations.business_validation }}
+    
+    *Business Impact*:
+    - Expected Revenue Impact: {{ .CommonAnnotations.revenue_impact }}
+    - Performance Improvement: {{ .CommonAnnotations.performance_improvement }}
+    - Feature Rollout: {{ .CommonAnnotations.feature_rollout }}
+    
+    *Team Recognition*:
+    Congratulations to the {{ .GroupLabels.business_domain }} team for a successful deployment! 🎉
+    
+    *Post-Deployment Monitoring*:
+    - Extended monitoring: {{ .CommonAnnotations.extended_monitoring }}
+    - Business metrics tracking: {{ .CommonAnnotations.business_tracking }}
+    - User feedback collection: {{ .CommonAnnotations.feedback_collection }}
+    
+    *Owner*: {{ .CommonAnnotations.business_owner }}
+    *Dashboard*: https://grafana.company.com/d/{{ .GroupLabels.business_domain }}-canary
+    {{ end }}
+
+  canary-rollback.tmpl: |
+    {{ define "canary.rollback.title" }}
+    ⚠️ Canary Rollback - {{ .GroupLabels.canary_name }}
+    {{ end }}
+
+    {{ define "canary.rollback.body" }}
+    *Canary Deployment Rollback Executed*
+    
+    *Application*: {{ .GroupLabels.canary_name }}
+    *Environment*: {{ .GroupLabels.environment }}
+    *Business Domain*: {{ .GroupLabels.business_domain }}
+    *Rollback Reason*: {{ .CommonAnnotations.rollback_reason }}
+    *Rollback Type*: {{ .CommonAnnotations.rollback_type }}
+    
+    *Failed Metrics*:
+    {{ range .Alerts }}
+    • *{{ .Labels.metric_name }}*: {{ .Labels.metric_value }} (Threshold: {{ .Labels.threshold }})
+      - Failure Type: {{ .Annotations.failure_type }}
+      - Business Impact: {{ .Annotations.business_impact }}
+      - Duration: {{ .Annotations.failure_duration }}
+    {{ end }}
+    
+    *Rollback Status*:
+    - Rollback Initiated: {{ .CommonAnnotations.rollback_initiated }}
+    - Rollback Completed: {{ .CommonAnnotations.rollback_completed }}
+    - Service Health: {{ .CommonAnnotations.service_health }}
+    - Traffic Routing: {{ .CommonAnnotations.traffic_routing }}
+    - Data Consistency: {{ .CommonAnnotations.data_consistency }}
+    
+    *Business Impact Assessment*:
+    - Revenue Impact: {{ .CommonAnnotations.revenue_impact }}
+    - Customer Impact: {{ .CommonAnnotations.customer_impact }}
+    - Service Availability: {{ .CommonAnnotations.service_availability }}
+    
+    *Immediate Actions*:
+    1. ✅ Automatic rollback completed
+    2. ✅ Service health verified
+    3. ✅ Traffic routing restored
+    4. ⏳ Root cause analysis initiated
+    5. ⏳ Stakeholder notification sent
+    
+    *Next Steps*:
+    1. Review failure metrics and logs
+    2. Conduct root cause analysis
+    3. Plan remediation actions
+    4. Schedule follow-up deployment
+    5. Update deployment procedures
+    
+    *Escalation*:
+    - Primary: {{ .CommonAnnotations.primary_contact }}
+    - Secondary: {{ .CommonAnnotations.secondary_contact }}
+    - Business Owner: {{ .CommonAnnotations.business_owner }}
+    
+    *Links*:
+    - Rollback Dashboard: https://grafana.company.com/d/canary-rollback
+    - Incident Report: https://incidents.company.com/{{ .CommonAnnotations.incident_id }}
+    - ArgoCD: https://argocd.company.com/applications/{{ .GroupLabels.canary_name }}
+    - Runbook: https://runbook.company.com/{{ .GroupLabels.business_domain }}/rollback
+    {{ end }}
+
+  compliance-violation.tmpl: |
+    {{ define "compliance.violation.title" }}
+    🚨 COMPLIANCE VIOLATION - {{ .GroupLabels.canary_name }}
+    {{ end }}
+
+    {{ define "compliance.violation.body" }}
+    *COMPLIANCE VIOLATION DETECTED*
+    
+    *Application*: {{ .GroupLabels.canary_name }}
+    *Environment*: {{ .GroupLabels.environment }}
+    *Violation Type*: {{ .CommonAnnotations.violation_type }}
+    *Severity*: {{ .CommonAnnotations.severity }}
+    *Compliance Framework*: {{ .CommonAnnotations.compliance_framework }}
+    
+    *Violation Details*:
+    {{ range .Alerts }}
+    • *{{ .Labels.parameter }}*: {{ .Labels.metric_value }} (Limit: {{ .Labels.threshold }})
+      - Violation: {{ .Annotations.violation_description }}
+      - Regulatory Impact: {{ .Annotations.regulatory_impact }}
+      - Compliance Risk: {{ .Annotations.compliance_risk }}
+    {{ end }}
+    
+    *Regulatory Framework Impact*:
+    - FDA 21 CFR Part 11: {{ .CommonAnnotations.fda_impact }}
+    - GMP Compliance: {{ .CommonAnnotations.gmp_impact }}
+    - ISO 13485: {{ .CommonAnnotations.iso_impact }}
+    
+    *Immediate Actions Taken*:
+    - Automatic rollback: {{ .CommonAnnotations.rollback_status }}
+    - Batch protection: {{ .CommonAnnotations.batch_protection }}
+    - Quality hold: {{ .CommonAnnotations.quality_hold }}
+    - Audit trail: {{ .CommonAnnotations.audit_trail }}
+    - Regulatory notification: {{ .CommonAnnotations.regulatory_notification }}
+    
+    *Required Actions*:
+    1. 🔴 IMMEDIATE: Verify rollback completion
+    2. 🔴 IMMEDIATE: Assess compliance status
+    3. 🔴 IMMEDIATE: Coordinate with regulatory team
+    4. 🟡 URGENT: Prepare compliance report
+    5. 🟡 URGENT: Initiate corrective actions
+    6. 🟡 URGENT: Update procedures
+    
+    *Escalation Chain*:
+    - L1: {{ .CommonAnnotations.l1_contact }}
+    - L2: {{ .CommonAnnotations.l2_contact }}
+    - Regulatory: {{ .CommonAnnotations.regulatory_contact }}
+    - Legal: {{ .CommonAnnotations.legal_contact }}
+    - Executive: {{ .CommonAnnotations.executive_contact }}
+    
+    *Critical Links*:
+    - Compliance Dashboard: https://compliance.company.com/violations
+    - Regulatory Portal: https://regulatory.company.com/incidents
+    - Audit System: https://audit.company.com/compliance-violations
+    - Emergency Procedures: https://procedures.company.com/compliance-emergency
+    
+    *Incident ID*: {{ .CommonAnnotations.incident_id }}
+    *Regulatory Case*: {{ .CommonAnnotations.regulatory_case }}
+    {{ end }}

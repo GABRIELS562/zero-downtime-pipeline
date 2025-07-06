@@ -1,0 +1,463 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-canary-config
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager
+    component: canary-notifications
+data:
+  alertmanager.yml: |
+    global:
+      slack_api_url: 'https://hooks.slack.com/services/YOUR_SLACK_WEBHOOK'
+      smtp_smarthost: 'smtp.company.com:587'
+      smtp_from: 'alerts@company.com'
+      smtp_auth_username: 'alerts@company.com'
+      smtp_auth_password: 'your-password'
+
+    # Notification templates for canary deployments
+    templates:
+    - '/etc/alertmanager/templates/*.tmpl'
+
+    # Routing rules for canary alerts
+    route:
+      group_by: ['alertname', 'business_domain', 'canary_name']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: 'default-receiver'
+      routes:
+      # Trading canary alerts - critical path
+      - match:
+          business_domain: trading
+          alert_type: canary_failure
+        receiver: 'trading-critical-alerts'
+        group_wait: 10s
+        group_interval: 1m
+        repeat_interval: 5m
+        routes:
+        - match:
+            severity: critical
+          receiver: 'trading-emergency-alerts'
+          group_wait: 5s
+          repeat_interval: 1m
+      
+      # Manufacturing canary alerts - regulatory compliance
+      - match:
+          business_domain: manufacturing
+          alert_type: canary_failure
+        receiver: 'manufacturing-regulatory-alerts'
+        group_wait: 30s
+        group_interval: 2m
+        repeat_interval: 10m
+        routes:
+        - match:
+            compliance_violation: "true"
+          receiver: 'manufacturing-compliance-alerts'
+          group_wait: 15s
+          repeat_interval: 5m
+      
+      # Canary promotion success notifications
+      - match:
+          alert_type: canary_promotion_success
+        receiver: 'canary-success-notifications'
+        group_wait: 60s
+        repeat_interval: 24h
+      
+      # Canary rollback alerts
+      - match:
+          alert_type: canary_rollback
+        receiver: 'canary-rollback-alerts'
+        group_wait: 15s
+        group_interval: 1m
+        repeat_interval: 2m
+
+    # Notification receivers
+    receivers:
+    - name: 'default-receiver'
+      slack_configs:
+      - channel: '#deployments'
+        title: 'Canary Deployment Alert'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        color: 'warning'
+
+    # Trading-specific receivers
+    - name: 'trading-critical-alerts'
+      slack_configs:
+      - channel: '#trading-critical'
+        title: 'CRITICAL: Trading Canary Failure'
+        text: |
+          🚨 *CRITICAL TRADING CANARY FAILURE* 🚨
+          
+          *Application*: {{ .GroupLabels.canary_name }}
+          *Environment*: {{ .GroupLabels.environment }}
+          *Business Impact*: {{ .CommonAnnotations.business_impact }}
+          *Revenue Impact*: {{ .CommonAnnotations.revenue_impact }}
+          
+          *Alerts*:
+          {{ range .Alerts }}
+          • {{ .Annotations.summary }}
+          • *Metric*: {{ .Labels.metric_name }} = {{ .Labels.metric_value }}
+          • *Threshold*: {{ .Labels.threshold }}
+          {{ end }}
+          
+          *Actions Required*:
+          - Immediate rollback initiated
+          - Trading risk assessment required
+          - Stakeholder notification sent
+          
+          *Escalation*: trading-oncall@company.com
+        color: 'danger'
+        actions:
+        - type: button
+          text: 'View Grafana Dashboard'
+          url: 'https://grafana.company.com/d/trading-canary'
+        - type: button
+          text: 'Check ArgoCD'
+          url: 'https://argocd.company.com/applications/trading-engine-prod'
+      email_configs:
+      - to: 'trading-oncall@company.com'
+        subject: 'CRITICAL: Trading Canary Deployment Failure'
+        body: |
+          CRITICAL TRADING CANARY FAILURE
+          
+          Application: {{ .GroupLabels.canary_name }}
+          Environment: {{ .GroupLabels.environment }}
+          Time: {{ .CommonAnnotations.timestamp }}
+          
+          Business Impact: {{ .CommonAnnotations.business_impact }}
+          Revenue Impact: {{ .CommonAnnotations.revenue_impact }}
+          
+          Failed Metrics:
+          {{ range .Alerts }}
+          - {{ .Annotations.summary }}
+            Metric: {{ .Labels.metric_name }} = {{ .Labels.metric_value }}
+            Threshold: {{ .Labels.threshold }}
+          {{ end }}
+          
+          Immediate actions:
+          1. Automatic rollback initiated
+          2. Risk assessment required
+          3. Stakeholder notification sent
+          
+          Dashboard: https://grafana.company.com/d/trading-canary
+          ArgoCD: https://argocd.company.com/applications/trading-engine-prod
+
+    - name: 'trading-emergency-alerts'
+      slack_configs:
+      - channel: '#trading-emergency'
+        title: 'EMERGENCY: Trading System Failure'
+        text: |
+          🚨 *EMERGENCY TRADING SYSTEM FAILURE* 🚨
+          
+          *IMMEDIATE RESPONSE REQUIRED*
+          
+          *Application*: {{ .GroupLabels.canary_name }}
+          *Severity*: CRITICAL
+          *Business Impact*: {{ .CommonAnnotations.business_impact }}
+          *Estimated Revenue Loss*: {{ .CommonAnnotations.revenue_loss_estimate }}
+          
+          *Failed Metrics*:
+          {{ range .Alerts }}
+          • {{ .Annotations.summary }}
+          • *Current Value*: {{ .Labels.metric_value }}
+          • *Critical Threshold*: {{ .Labels.threshold }}
+          {{ end }}
+          
+          *Emergency Actions*:
+          - Automatic rollback: {{ .CommonAnnotations.rollback_status }}
+          - Trading halt: {{ .CommonAnnotations.trading_halt_status }}
+          - Risk team notified: {{ .CommonAnnotations.risk_team_notified }}
+          
+          *Emergency Contacts*:
+          - On-call: trading-oncall@company.com
+          - Risk Manager: {{ .CommonAnnotations.risk_manager_contact }}
+          - Business Owner: {{ .CommonAnnotations.business_owner_contact }}
+        color: 'danger'
+      email_configs:
+      - to: 'trading-emergency@company.com'
+        subject: 'EMERGENCY: Trading System Failure - Immediate Response Required'
+        body: |
+          EMERGENCY TRADING SYSTEM FAILURE
+          
+          This is an automated emergency notification for critical trading system failure.
+          
+          Application: {{ .GroupLabels.canary_name }}
+          Severity: CRITICAL
+          Time: {{ .CommonAnnotations.timestamp }}
+          
+          Business Impact: {{ .CommonAnnotations.business_impact }}
+          Estimated Revenue Loss: {{ .CommonAnnotations.revenue_loss_estimate }}
+          
+          Critical Metrics Failure:
+          {{ range .Alerts }}
+          - {{ .Annotations.summary }}
+            Current Value: {{ .Labels.metric_value }}
+            Critical Threshold: {{ .Labels.threshold }}
+            Impact: {{ .Annotations.impact }}
+          {{ end }}
+          
+          Emergency Actions Taken:
+          - Automatic rollback: {{ .CommonAnnotations.rollback_status }}
+          - Trading halt: {{ .CommonAnnotations.trading_halt_status }}
+          - Risk team notified: {{ .CommonAnnotations.risk_team_notified }}
+          
+          IMMEDIATE RESPONSE REQUIRED:
+          1. Verify rollback completion
+          2. Assess trading system status
+          3. Coordinate with risk management
+          4. Prepare stakeholder communication
+          
+          Emergency Contacts:
+          - On-call: trading-oncall@company.com
+          - Risk Manager: {{ .CommonAnnotations.risk_manager_contact }}
+          - Business Owner: {{ .CommonAnnotations.business_owner_contact }}
+          
+          Dashboard: https://grafana.company.com/d/trading-emergency
+          ArgoCD: https://argocd.company.com/applications/trading-engine-prod
+
+    # Manufacturing-specific receivers
+    - name: 'manufacturing-regulatory-alerts'
+      slack_configs:
+      - channel: '#manufacturing-regulatory'
+        title: 'Manufacturing Canary Regulatory Alert'
+        text: |
+          ⚠️ *MANUFACTURING CANARY REGULATORY ALERT* ⚠️
+          
+          *Application*: {{ .GroupLabels.canary_name }}
+          *Environment*: {{ .GroupLabels.environment }}
+          *Compliance Framework*: {{ .CommonAnnotations.compliance_framework }}
+          *Batch Impact*: {{ .CommonAnnotations.batch_impact }}
+          
+          *Regulatory Concerns*:
+          {{ range .Alerts }}
+          • {{ .Annotations.summary }}
+          • *Metric*: {{ .Labels.metric_name }} = {{ .Labels.metric_value }}
+          • *Regulatory Threshold*: {{ .Labels.threshold }}
+          • *FDA Impact*: {{ .Annotations.fda_impact }}
+          {{ end }}
+          
+          *Actions*:
+          - Regulatory assessment initiated
+          - Batch tracking verified
+          - Quality control notified
+          
+          *Contacts*:
+          - Manufacturing: manufacturing-oncall@company.com
+          - Quality: quality-assurance@company.com
+          - Regulatory: regulatory-affairs@company.com
+        color: 'warning'
+      email_configs:
+      - to: 'regulatory-affairs@company.com'
+        subject: 'Manufacturing Canary Regulatory Alert'
+        body: |
+          MANUFACTURING CANARY REGULATORY ALERT
+          
+          Application: {{ .GroupLabels.canary_name }}
+          Environment: {{ .GroupLabels.environment }}
+          Compliance Framework: {{ .CommonAnnotations.compliance_framework }}
+          Time: {{ .CommonAnnotations.timestamp }}
+          
+          Regulatory Concerns:
+          {{ range .Alerts }}
+          - {{ .Annotations.summary }}
+            Metric: {{ .Labels.metric_name }} = {{ .Labels.metric_value }}
+            Regulatory Threshold: {{ .Labels.threshold }}
+            FDA Impact: {{ .Annotations.fda_impact }}
+          {{ end }}
+          
+          Actions Taken:
+          - Regulatory assessment initiated
+          - Batch tracking verified
+          - Quality control notified
+          
+          Please review compliance status and provide guidance.
+          
+          Dashboard: https://grafana.company.com/d/manufacturing-canary
+          ArgoCD: https://argocd.company.com/applications/manufacturing-control-prod
+
+    - name: 'manufacturing-compliance-alerts'
+      slack_configs:
+      - channel: '#manufacturing-compliance'
+        title: 'COMPLIANCE VIOLATION: Manufacturing Canary'
+        text: |
+          🚨 *COMPLIANCE VIOLATION DETECTED* 🚨
+          
+          *Application*: {{ .GroupLabels.canary_name }}
+          *Violation Type*: {{ .CommonAnnotations.violation_type }}
+          *Compliance Framework*: {{ .CommonAnnotations.compliance_framework }}
+          *Severity*: {{ .CommonAnnotations.severity }}
+          
+          *Violations*:
+          {{ range .Alerts }}
+          • {{ .Annotations.summary }}
+          • *Parameter*: {{ .Labels.parameter }}
+          • *Current Value*: {{ .Labels.metric_value }}
+          • *Compliance Limit*: {{ .Labels.threshold }}
+          • *Regulatory Impact*: {{ .Annotations.regulatory_impact }}
+          {{ end }}
+          
+          *Immediate Actions*:
+          - Automatic rollback: {{ .CommonAnnotations.rollback_status }}
+          - Batch protection: {{ .CommonAnnotations.batch_protection }}
+          - Quality hold: {{ .CommonAnnotations.quality_hold }}
+          - FDA notification: {{ .CommonAnnotations.fda_notification }}
+          
+          *Emergency Contacts*:
+          - Manufacturing: manufacturing-oncall@company.com
+          - Quality: quality-assurance@company.com
+          - Regulatory: regulatory-affairs@company.com
+          - Legal: legal-compliance@company.com
+        color: 'danger'
+      email_configs:
+      - to: 'compliance-team@company.com'
+        subject: 'COMPLIANCE VIOLATION: Manufacturing Canary Deployment'
+        body: |
+          COMPLIANCE VIOLATION DETECTED
+          
+          This is an automated alert for a compliance violation during manufacturing canary deployment.
+          
+          Application: {{ .GroupLabels.canary_name }}
+          Violation Type: {{ .CommonAnnotations.violation_type }}
+          Compliance Framework: {{ .CommonAnnotations.compliance_framework }}
+          Severity: {{ .CommonAnnotations.severity }}
+          Time: {{ .CommonAnnotations.timestamp }}
+          
+          Violations Detected:
+          {{ range .Alerts }}
+          - {{ .Annotations.summary }}
+            Parameter: {{ .Labels.parameter }}
+            Current Value: {{ .Labels.metric_value }}
+            Compliance Limit: {{ .Labels.threshold }}
+            Regulatory Impact: {{ .Annotations.regulatory_impact }}
+          {{ end }}
+          
+          Immediate Actions Taken:
+          - Automatic rollback: {{ .CommonAnnotations.rollback_status }}
+          - Batch protection: {{ .CommonAnnotations.batch_protection }}
+          - Quality hold: {{ .CommonAnnotations.quality_hold }}
+          - FDA notification: {{ .CommonAnnotations.fda_notification }}
+          
+          COMPLIANCE TEAM ACTION REQUIRED:
+          1. Review violation details
+          2. Assess regulatory impact
+          3. Coordinate with manufacturing team
+          4. Prepare compliance report
+          5. Initiate corrective actions
+          
+          Emergency Contacts:
+          - Manufacturing: manufacturing-oncall@company.com
+          - Quality: quality-assurance@company.com
+          - Regulatory: regulatory-affairs@company.com
+          - Legal: legal-compliance@company.com
+          
+          Dashboard: https://grafana.company.com/d/manufacturing-compliance
+          ArgoCD: https://argocd.company.com/applications/manufacturing-control-prod
+
+    # Success notifications
+    - name: 'canary-success-notifications'
+      slack_configs:
+      - channel: '#deployments'
+        title: 'Canary Deployment Success'
+        text: |
+          ✅ *CANARY DEPLOYMENT SUCCESSFUL* ✅
+          
+          *Application*: {{ .GroupLabels.canary_name }}
+          *Environment*: {{ .GroupLabels.environment }}
+          *Business Domain*: {{ .GroupLabels.business_domain }}
+          
+          *Success Metrics*:
+          {{ range .Alerts }}
+          • {{ .Annotations.summary }}
+          • *Final Value*: {{ .Labels.metric_value }}
+          • *Target*: {{ .Labels.threshold }}
+          {{ end }}
+          
+          *Deployment Details*:
+          - Duration: {{ .CommonAnnotations.deployment_duration }}
+          - Promotion: {{ .CommonAnnotations.promotion_type }}
+          - Validation: {{ .CommonAnnotations.validation_status }}
+          
+          Congratulations to the team! 🎉
+        color: 'good'
+
+    # Rollback notifications
+    - name: 'canary-rollback-alerts'
+      slack_configs:
+      - channel: '#deployments'
+        title: 'Canary Rollback Executed'
+        text: |
+          ⚠️ *CANARY ROLLBACK EXECUTED* ⚠️
+          
+          *Application*: {{ .GroupLabels.canary_name }}
+          *Environment*: {{ .GroupLabels.environment }}
+          *Business Domain*: {{ .GroupLabels.business_domain }}
+          *Rollback Reason*: {{ .CommonAnnotations.rollback_reason }}
+          
+          *Failed Metrics*:
+          {{ range .Alerts }}
+          • {{ .Annotations.summary }}
+          • *Value*: {{ .Labels.metric_value }}
+          • *Threshold*: {{ .Labels.threshold }}
+          {{ end }}
+          
+          *Rollback Status*:
+          - Initiated: {{ .CommonAnnotations.rollback_initiated }}
+          - Completed: {{ .CommonAnnotations.rollback_completed }}
+          - Service Health: {{ .CommonAnnotations.service_health }}
+          
+          *Next Steps*:
+          - Review failure metrics
+          - Investigate root cause
+          - Plan remediation
+          
+          *Contact*: {{ .CommonAnnotations.owner_contact }}
+        color: 'warning'
+      email_configs:
+      - to: '{{ .CommonAnnotations.owner_contact }}'
+        subject: 'Canary Rollback: {{ .GroupLabels.canary_name }}'
+        body: |
+          CANARY ROLLBACK EXECUTED
+          
+          Application: {{ .GroupLabels.canary_name }}
+          Environment: {{ .GroupLabels.environment }}
+          Business Domain: {{ .GroupLabels.business_domain }}
+          Rollback Reason: {{ .CommonAnnotations.rollback_reason }}
+          Time: {{ .CommonAnnotations.timestamp }}
+          
+          Failed Metrics:
+          {{ range .Alerts }}
+          - {{ .Annotations.summary }}
+            Value: {{ .Labels.metric_value }}
+            Threshold: {{ .Labels.threshold }}
+          {{ end }}
+          
+          Rollback Status:
+          - Initiated: {{ .CommonAnnotations.rollback_initiated }}
+          - Completed: {{ .CommonAnnotations.rollback_completed }}
+          - Service Health: {{ .CommonAnnotations.service_health }}
+          
+          Next Steps:
+          1. Review failure metrics
+          2. Investigate root cause
+          3. Plan remediation
+          4. Schedule follow-up deployment
+          
+          Dashboard: https://grafana.company.com/d/canary-rollback
+          ArgoCD: https://argocd.company.com/applications/{{ .GroupLabels.canary_name }}
+
+    # Inhibition rules
+    inhibit_rules:
+    - source_match:
+        severity: 'critical'
+        alert_type: 'canary_failure'
+      target_match:
+        severity: 'warning'
+        alert_type: 'canary_failure'
+      equal: ['canary_name', 'environment']
+      
+    - source_match:
+        alert_type: 'canary_rollback'
+      target_match:
+        alert_type: 'canary_failure'
+      equal: ['canary_name', 'environment']
