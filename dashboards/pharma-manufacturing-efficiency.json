@@ -1,0 +1,1031 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Pharma Manufacturing - Efficiency & Compliance During Deployments",
+    "tags": ["pharma", "manufacturing", "efficiency", "compliance", "fda", "deployment"],
+    "style": "dark",
+    "timezone": "UTC",
+    "refresh": "10s",
+    "time": {
+      "from": "now-8h",
+      "to": "now"
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "manufacturing_line",
+          "type": "query",
+          "query": "label_values(manufacturing_line_efficiency_percent, line_id)",
+          "current": {
+            "value": "All"
+          },
+          "multi": true,
+          "includeAll": true
+        },
+        {
+          "name": "batch_id",
+          "type": "query",
+          "query": "label_values(batch_integrity_score, batch_id)",
+          "current": {
+            "value": "All"
+          },
+          "multi": true,
+          "includeAll": true
+        },
+        {
+          "name": "deployment_window",
+          "type": "query",
+          "query": "label_values(deployment_status{application=\"pharma-manufacturing\"}, deployment_id)",
+          "current": {
+            "value": "All"
+          },
+          "multi": true,
+          "includeAll": true
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Manufacturing Efficiency Impact",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "manufacturing_line_efficiency_percent{line_id=~\"$manufacturing_line\"}",
+            "legendFormat": "{{line_id}} Efficiency %",
+            "refId": "A"
+          },
+          {
+            "expr": "manufacturing_throughput_units_per_hour{line_id=~\"$manufacturing_line\"}",
+            "legendFormat": "{{line_id}} Throughput (units/h)",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "auto",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "line"
+              }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 98
+                }
+              ]
+            },
+            "unit": "percent"
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byRegexp",
+                "options": ".*Throughput.*"
+              },
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "short"
+                }
+              ]
+            }
+          ]
+        },
+        "annotations": {
+          "list": [
+            {
+              "datasource": "prometheus",
+              "enable": true,
+              "expr": "deployment_start_time{application=\"pharma-manufacturing\"}",
+              "iconColor": "blue",
+              "name": "Deployment Start"
+            },
+            {
+              "datasource": "prometheus",
+              "enable": true,
+              "expr": "deployment_end_time{application=\"pharma-manufacturing\"}",
+              "iconColor": "green",
+              "name": "Deployment End"
+            }
+          ]
+        }
+      },
+      {
+        "id": 2,
+        "title": "Production Line Status",
+        "type": "stat",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "manufacturing_line_status{line_id=~\"$manufacturing_line\"}",
+            "legendFormat": "{{line_id}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
+              ]
+            },
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "STOPPED",
+                    "color": "red"
+                  },
+                  "1": {
+                    "text": "RUNNING",
+                    "color": "green"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Critical Environmental Sensors",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "sensor_temperature_celsius{critical=\"true\"}",
+            "legendFormat": "{{sensor_id}} Temperature (°C)",
+            "refId": "A"
+          },
+          {
+            "expr": "sensor_humidity_percent{critical=\"true\"}",
+            "legendFormat": "{{sensor_id}} Humidity (%)",
+            "refId": "B"
+          },
+          {
+            "expr": "sensor_pressure_bar{critical=\"true\"}",
+            "legendFormat": "{{sensor_id}} Pressure (bar)",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "auto",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "area"
+              }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "transparent",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 18
+                },
+                {
+                  "color": "green",
+                  "value": 20
+                },
+                {
+                  "color": "red",
+                  "value": 25
+                }
+              ]
+            },
+            "unit": "celsius"
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byRegexp",
+                "options": ".*Humidity.*"
+              },
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "percent"
+                },
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "transparent",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 40
+                      },
+                      {
+                        "color": "green",
+                        "value": 45
+                      },
+                      {
+                        "color": "red",
+                        "value": 60
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byRegexp",
+                "options": ".*Pressure.*"
+              },
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "bar"
+                },
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "transparent",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 0.8
+                      },
+                      {
+                        "color": "green",
+                        "value": 1.0
+                      },
+                      {
+                        "color": "red",
+                        "value": 2.5
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 4,
+        "title": "Batch Processing Status",
+        "type": "table",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "batch_integrity_score{batch_id=~\"$batch_id\"}",
+            "legendFormat": "{{batch_id}}",
+            "refId": "A",
+            "format": "table"
+          },
+          {
+            "expr": "batch_processing_duration_seconds{batch_id=~\"$batch_id\"} / 3600",
+            "legendFormat": "{{batch_id}}",
+            "refId": "B",
+            "format": "table"
+          },
+          {
+            "expr": "batch_yield_percent{batch_id=~\"$batch_id\"}",
+            "legendFormat": "{{batch_id}}",
+            "refId": "C",
+            "format": "table"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "merge",
+            "options": {}
+          },
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "Time": true,
+                "__name__": true
+              },
+              "indexByName": {
+                "batch_id": 0,
+                "Value #A": 1,
+                "Value #B": 2,
+                "Value #C": 3
+              },
+              "renameByName": {
+                "batch_id": "Batch ID",
+                "Value #A": "Integrity Score",
+                "Value #B": "Duration (hours)",
+                "Value #C": "Yield (%)"
+              }
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 80
+                },
+                {
+                  "color": "red",
+                  "value": 90
+                }
+              ]
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Integrity Score"
+              },
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "percent"
+                },
+                {
+                  "id": "custom.displayMode",
+                  "value": "gradient-gauge"
+                },
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "red",
+                        "value": 0
+                      },
+                      {
+                        "color": "green",
+                        "value": 100
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Duration (hours)"
+              },
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "h"
+                },
+                {
+                  "id": "custom.displayMode",
+                  "value": "basic"
+                },
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "yellow",
+                        "value": 3
+                      },
+                      {
+                        "color": "red",
+                        "value": 4
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Yield (%)"
+              },
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "percent"
+                },
+                {
+                  "id": "custom.displayMode",
+                  "value": "gradient-gauge"
+                },
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "red",
+                        "value": 0
+                      },
+                      {
+                        "color": "yellow",
+                        "value": 95
+                      },
+                      {
+                        "color": "green",
+                        "value": 98
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 5,
+        "title": "FDA Compliance Status",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 24,
+          "x": 0,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "audit_trail_integrity_check",
+            "legendFormat": "Audit Trail Integrity",
+            "refId": "A"
+          },
+          {
+            "expr": "digital_signature_validation_failures",
+            "legendFormat": "Digital Signature Failures",
+            "refId": "B"
+          },
+          {
+            "expr": "sensor_validation_success_rate",
+            "legendFormat": "Sensor Validation Rate (%)",
+            "refId": "C"
+          },
+          {
+            "expr": "gmp_compliance_score",
+            "legendFormat": "GMP Compliance Score",
+            "refId": "D"
+          },
+          {
+            "expr": "change_control_violations",
+            "legendFormat": "Change Control Violations",
+            "refId": "E"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 80
+                },
+                {
+                  "color": "red",
+                  "value": 90
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Audit Trail Integrity"
+              },
+              "properties": [
+                {
+                  "id": "mappings",
+                  "value": [
+                    {
+                      "options": {
+                        "0": {
+                          "text": "FAILED",
+                          "color": "red"
+                        },
+                        "1": {
+                          "text": "PASSED",
+                          "color": "green"
+                        }
+                      },
+                      "type": "value"
+                    }
+                  ]
+                },
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "red",
+                        "value": 0
+                      },
+                      {
+                        "color": "green",
+                        "value": 1
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Digital Signature Failures"
+              },
+              "properties": [
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 1
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Sensor Validation Rate (%)"
+              },
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "percent"
+                },
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "red",
+                        "value": 0
+                      },
+                      {
+                        "color": "yellow",
+                        "value": 99
+                      },
+                      {
+                        "color": "green",
+                        "value": 99.5
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "GMP Compliance Score"
+              },
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "percent"
+                },
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "red",
+                        "value": 0
+                      },
+                      {
+                        "color": "yellow",
+                        "value": 95
+                      },
+                      {
+                        "color": "green",
+                        "value": 99
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Change Control Violations"
+              },
+              "properties": [
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 1
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 6,
+        "title": "Production vs Deployment Windows",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 22
+        },
+        "targets": [
+          {
+            "expr": "pharma_production_active",
+            "legendFormat": "Production Active",
+            "refId": "A"
+          },
+          {
+            "expr": "pharma_deployment_active",
+            "legendFormat": "Deployment Active",
+            "refId": "B"
+          },
+          {
+            "expr": "pharma_maintenance_window",
+            "legendFormat": "Maintenance Window",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 50,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "stepAfter",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "auto",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "INACTIVE"
+                  },
+                  "1": {
+                    "text": "ACTIVE"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "short",
+            "min": 0,
+            "max": 1
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Deployment Risk Assessment",
+        "type": "heatmap",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 22
+        },
+        "targets": [
+          {
+            "expr": "deployment_risk_score{application=\"pharma-manufacturing\", line_id=~\"$manufacturing_line\"}",
+            "legendFormat": "{{line_id}}",
+            "refId": "A",
+            "format": "heatmap"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "continuous-GrYlRd"
+            },
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              }
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "System Performance During Deployment",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 6,
+          "w": 24,
+          "x": 0,
+          "y": 30
+        },
+        "targets": [
+          {
+            "expr": "(container_memory_usage_bytes{pod=~\"pharma-manufacturing-.*\"} / container_spec_memory_limit_bytes) * 100",
+            "legendFormat": "Memory % - {{pod}}",
+            "refId": "A"
+          },
+          {
+            "expr": "(rate(container_cpu_usage_seconds_total{pod=~\"pharma-manufacturing-.*\"}[5m]) / container_spec_cpu_quota * container_spec_cpu_period) * 100",
+            "legendFormat": "CPU % - {{pod}}",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(container_network_receive_bytes_total{pod=~\"pharma-manufacturing-.*\"}[5m]) * 8",
+            "legendFormat": "Network In (bps) - {{pod}}",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "auto",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "percent"
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byRegexp",
+                "options": ".*Network.*"
+              },
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "bps"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        },
+        {
+          "datasource": "prometheus",
+          "enable": true,
+          "expr": "pharma_deployment_active == 1 and pharma_production_active == 1",
+          "iconColor": "red",
+          "name": "GMP Violation",
+          "titleFormat": "GMP COMPLIANCE VIOLATION",
+          "textFormat": "Deployment attempted during active production"
+        },
+        {
+          "datasource": "prometheus",
+          "enable": true,
+          "expr": "batch_integrity_score < 100",
+          "iconColor": "orange",
+          "name": "Batch Integrity",
+          "titleFormat": "Batch Integrity Issue",
+          "textFormat": "Batch {{$labels.batch_id}} integrity compromised"
+        },
+        {
+          "datasource": "prometheus",
+          "enable": true,
+          "expr": "manufacturing_line_efficiency_percent < 98",
+          "iconColor": "yellow",
+          "name": "Efficiency Drop",
+          "titleFormat": "Manufacturing Efficiency Below Threshold",
+          "textFormat": "Line {{$labels.line_id}} efficiency: {{$value}}%"
+        }
+      ]
+    }
+  }
+}
