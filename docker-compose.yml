@@ -1,0 +1,397 @@
+version: '3.8'
+
+###############################################################################
+# Zero-Downtime Pipeline - Development Environment
+# 
+# This Docker Compose configuration provides a complete local development
+# environment for testing the forensic deployment methodology and business
+# impact monitoring capabilities.
+###############################################################################
+
+services:
+  # Finance Trading Application
+  finance-trading:
+    build: 
+      context: ./apps/finance-trading
+      dockerfile: Dockerfile
+      args:
+        BUILD_ID: local-dev
+        GIT_COMMIT: ${GIT_COMMIT:-local}
+        BUILD_TIMESTAMP: ${BUILD_TIMESTAMP:-$(date -Iseconds)}
+    container_name: finance-trading-app
+    ports:
+      - "8080:8080"   # Main application port
+      - "8081:8081"   # Health check port
+      - "9090:9090"   # Metrics port
+    environment:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=DEBUG
+      - MAX_LATENCY_MS=50
+      - SUCCESS_RATE_THRESHOLD=99.99
+      - MARKET_DATA_ENDPOINT=ws://market-data-simulator:8082/feed
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://trading_user:trading_pass@postgres:5432/trading_db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      - postgres
+      - redis
+      - market-data-simulator
+    networks:
+      - trading-network
+      - monitoring-network
+    labels:
+      - "forensic.application=finance-trading"
+      - "forensic.compliance=SOX"
+      - "forensic.business_impact=high"
+      - "forensic.latency_requirement=50ms"
+
+  # Pharma Manufacturing Application  
+  pharma-manufacturing:
+    build:
+      context: ./apps/pharma-manufacturing
+      dockerfile: Dockerfile
+      args:
+        BUILD_ID: local-dev
+        GIT_COMMIT: ${GIT_COMMIT:-local}
+        BUILD_TIMESTAMP: ${BUILD_TIMESTAMP:-$(date -Iseconds)}
+    container_name: pharma-manufacturing-app
+    ports:
+      - "8090:8080"   # Main application port
+      - "8091:8081"   # Health check port  
+      - "9091:9090"   # Metrics port
+    environment:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=DEBUG
+      - EFFICIENCY_THRESHOLD=98.0
+      - FDA_AUDIT_ENABLED=true
+      - GMP_VALIDATION_ENABLED=true
+      - SENSOR_ENDPOINT=http://sensor-simulator:8083
+      - DATABASE_URL=postgresql://pharma_user:pharma_pass@postgres:5432/pharma_db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health/ready"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      - postgres
+      - sensor-simulator
+    networks:
+      - manufacturing-network
+      - monitoring-network
+    labels:
+      - "forensic.application=pharma-manufacturing"
+      - "forensic.compliance=FDA_21_CFR_11"
+      - "forensic.business_impact=critical"
+      - "forensic.efficiency_requirement=98%"
+
+  # Market Data Simulator (for Finance Trading)
+  market-data-simulator:
+    image: alpine:3.18
+    container_name: market-data-simulator
+    ports:
+      - "8082:8082"
+    command: |
+      sh -c "
+        apk add --no-cache python3 py3-pip && 
+        pip3 install websockets aiohttp && 
+        python3 -c \"
+import asyncio
+import websockets
+import json
+import random
+import time
+from aiohttp import web
+
+async def market_data_handler(websocket, path):
+    print('Market data client connected')
+    try:
+        while True:
+            # Simulate market data
+            data = {
+                'timestamp': int(time.time() * 1000),
+                'symbol': random.choice(['AAPL', 'GOOGL', 'MSFT', 'TSLA']),
+                'price': round(random.uniform(100, 1000), 2),
+                'volume': random.randint(1000, 10000),
+                'bid': round(random.uniform(100, 1000), 2),
+                'ask': round(random.uniform(100, 1000), 2)
+            }
+            await websocket.send(json.dumps(data))
+            await asyncio.sleep(0.1)  # 10 updates per second
+    except websockets.exceptions.ConnectionClosed:
+        print('Market data client disconnected')
+
+async def health_handler(request):
+    return web.json_response({'status': 'healthy', 'service': 'market-data-simulator'})
+
+async def start_servers():
+    # WebSocket server for market data
+    ws_server = await websockets.serve(market_data_handler, '0.0.0.0', 8082)
+    
+    # HTTP server for health checks
+    app = web.Application()
+    app.router.add_get('/health', health_handler)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', 8083)
+    await site.start()
+    
+    print('Market data simulator started on ws://localhost:8082 and http://localhost:8083')
+    await ws_server.wait_closed()
+
+asyncio.run(start_servers())
+        \"
+      "
+    networks:
+      - trading-network
+    labels:
+      - "forensic.service=market-data-simulator"
+      - "forensic.type=test-infrastructure"
+
+  # Sensor Simulator (for Pharma Manufacturing)
+  sensor-simulator:
+    image: alpine:3.18
+    container_name: sensor-simulator
+    ports:
+      - "8083:8083"
+    command: |
+      sh -c "
+        apk add --no-cache python3 py3-pip &&
+        pip3 install aiohttp &&
+        python3 -c \"
+import asyncio
+import json
+import random
+import time
+from aiohttp import web
+
+async def sensor_data_handler(request):
+    sensor_id = request.match_info.get('sensor_id', 'TEMP-001')
+    
+    # Simulate sensor readings
+    if 'TEMP' in sensor_id:
+        value = round(random.uniform(18.0, 25.0), 1)
+        unit = 'celsius'
+    elif 'PRESS' in sensor_id:
+        value = round(random.uniform(0.8, 2.5), 2)
+        unit = 'bar'
+    elif 'HUM' in sensor_id:
+        value = round(random.uniform(45.0, 60.0), 1)
+        unit = 'percent'
+    else:
+        value = round(random.uniform(0, 100), 2)
+        unit = 'unknown'
+    
+    data = {
+        'sensor_id': sensor_id,
+        'timestamp': int(time.time() * 1000),
+        'value': value,
+        'unit': unit,
+        'status': 'normal' if random.random() > 0.05 else 'warning',
+        'critical': sensor_id in ['TEMP-001', 'PRESS-001']
+    }
+    
+    return web.json_response(data)
+
+async def health_handler(request):
+    return web.json_response({'status': 'healthy', 'service': 'sensor-simulator'})
+
+async def efficiency_handler(request):
+    line_id = request.match_info.get('line_id', 'LINE-001')
+    efficiency = round(random.uniform(96.0, 99.5), 1)
+    
+    data = {
+        'line_id': line_id,
+        'timestamp': int(time.time() * 1000),
+        'efficiency_percent': efficiency,
+        'throughput_units_per_hour': random.randint(800, 1200),
+        'status': 'running' if efficiency > 98.0 else 'degraded'
+    }
+    
+    return web.json_response(data)
+
+app = web.Application()
+app.router.add_get('/health', health_handler)
+app.router.add_get('/sensor/{sensor_id}', sensor_data_handler)
+app.router.add_get('/efficiency/{line_id}', efficiency_handler)
+
+print('Sensor simulator starting on http://localhost:8083')
+web.run_app(app, host='0.0.0.0', port=8083)
+        \"
+      "
+    networks:
+      - manufacturing-network
+    labels:
+      - "forensic.service=sensor-simulator"
+      - "forensic.type=test-infrastructure"
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trading-network
+      - manufacturing-network
+    labels:
+      - "forensic.service=database"
+      - "forensic.type=infrastructure"
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - trading-network
+    labels:
+      - "forensic.service=cache"
+      - "forensic.type=infrastructure"
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - monitoring-network
+    labels:
+      - "forensic.service=monitoring"
+      - "forensic.type=observability"
+
+  # Grafana Dashboards
+  grafana:
+    image: grafana/grafana:10.1.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin_password
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./dashboards:/var/lib/grafana/dashboards
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - monitoring-network
+    labels:
+      - "forensic.service=dashboards"
+      - "forensic.type=observability"
+
+  # Load Balancer (HAProxy)
+  load-balancer:
+    image: haproxy:2.8-alpine
+    container_name: load-balancer
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8404:8404"  # HAProxy stats
+    volumes:
+      - ./monitoring/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - finance-trading
+      - pharma-manufacturing
+    networks:
+      - trading-network
+      - manufacturing-network
+      - monitoring-network
+    labels:
+      - "forensic.service=load-balancer"
+      - "forensic.type=infrastructure"
+
+  # Jenkins for CI/CD (Optional - for testing pipeline)
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins-cicd
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    environment:
+      - JENKINS_OPTS=--httpPort=8080
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - monitoring-network
+    labels:
+      - "forensic.service=cicd"
+      - "forensic.type=automation"
+
+# Networks
+networks:
+  trading-network:
+    driver: bridge
+    labels:
+      - "forensic.network=trading"
+      - "forensic.compliance=SOX"
+  manufacturing-network:
+    driver: bridge
+    labels:
+      - "forensic.network=manufacturing"  
+      - "forensic.compliance=FDA_21_CFR_11"
+  monitoring-network:
+    driver: bridge
+    labels:
+      - "forensic.network=monitoring"
+      - "forensic.type=observability"
+
+# Volumes
+volumes:
+  postgres_data:
+    labels:
+      - "forensic.data=database"
+      - "forensic.retention=7_years"
+  redis_data:
+    labels:
+      - "forensic.data=cache"
+      - "forensic.retention=30_days"
+  prometheus_data:
+    labels:
+      - "forensic.data=metrics"
+      - "forensic.retention=30_days"
+  grafana_data:
+    labels:
+      - "forensic.data=dashboards"
+      - "forensic.retention=1_year"
+  jenkins_data:
+    labels:
+      - "forensic.data=cicd"
+      - "forensic.retention=1_year"
