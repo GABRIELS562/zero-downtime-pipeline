@@ -1,0 +1,237 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "🎯 SRE: Error Budget Dashboard",
+    "tags": ["sre", "error-budget", "reliability"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "🏦 Finance Trading - Error Budget Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "100 - (rate(http_requests_total{job=\"finance-trading\",code=~\"[45]..\"}[30d]) / rate(http_requests_total{job=\"finance-trading\"}[30d]) * 100) / 0.1 * 100",
+            "legendFormat": "Availability Budget Remaining"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 25},
+                {"color": "green", "value": 50}
+              ]
+            },
+            "unit": "percent"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "🏥 Pharma Manufacturing - Error Budget Overview", 
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "100 - (rate(http_requests_total{job=\"pharma-manufacturing\",code=~\"[45]..\"}[30d]) / rate(http_requests_total{job=\"pharma-manufacturing\"}[30d]) * 100) / 0.05 * 100",
+            "legendFormat": "Availability Budget Remaining"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 25},
+                {"color": "green", "value": 50}
+              ]
+            },
+            "unit": "percent"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "📊 SRE: Error Budget Burn Rate (Finance Trading)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{job=\"finance-trading\",code=~\"[45]..\"}[5m]) / rate(http_requests_total{job=\"finance-trading\"}[5m]) * 100 / 0.1 * 100",
+            "legendFormat": "Availability Budget Burn Rate"
+          },
+          {
+            "expr": "rate(http_request_duration_seconds_bucket{job=\"finance-trading\",le=\"0.05\"}[5m]) / rate(http_request_duration_seconds_count{job=\"finance-trading\"}[5m]) * 100",
+            "legendFormat": "Latency Budget (% under 50ms)"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Burn Rate (%/hour)",
+            "min": 0
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "query": {"queryType": "", "refId": "A"},
+              "reducer": {"type": "last", "params": []},
+              "evaluator": {"params": [14.4], "type": "gt"}
+            }
+          ],
+          "executionErrorState": "alerting",
+          "for": "5m",
+          "frequency": "10s",
+          "handler": 1,
+          "name": "🚨 SRE: Finance Trading - Fast Error Budget Burn",
+          "noDataState": "no_data",
+          "notifications": []
+        },
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "📊 SRE: Error Budget Burn Rate (Pharma Manufacturing)",
+        "type": "graph", 
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{job=\"pharma-manufacturing\",code=~\"[45]..\"}[5m]) / rate(http_requests_total{job=\"pharma-manufacturing\"}[5m]) * 100 / 0.05 * 100",
+            "legendFormat": "Availability Budget Burn Rate"
+          },
+          {
+            "expr": "rate(manufacturing_batch_success_total[5m]) / rate(manufacturing_batch_total[5m]) * 100",
+            "legendFormat": "Batch Success Rate (%)"
+          },
+          {
+            "expr": "rate(data_validation_success_total{job=\"pharma-manufacturing\"}[5m]) / rate(data_validation_total{job=\"pharma-manufacturing\"}[5m]) * 100",
+            "legendFormat": "Data Integrity Rate (%)"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Rate/Percentage",
+            "min": 0
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "query": {"queryType": "", "refId": "A"},
+              "reducer": {"type": "last", "params": []},
+              "evaluator": {"params": [28.8], "type": "gt"}
+            }
+          ],
+          "executionErrorState": "alerting",
+          "for": "5m", 
+          "frequency": "10s",
+          "handler": 1,
+          "name": "🚨 SRE: Pharma Manufacturing - Fast Error Budget Burn",
+          "noDataState": "no_data",
+          "notifications": []
+        },
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}
+      },
+      {
+        "id": 5,
+        "title": "📈 SRE: Monthly Error Budget Consumption Trend",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "100 - (1 - rate(http_requests_total{job=\"finance-trading\",code=~\"2..\"}[30d]) / rate(http_requests_total{job=\"finance-trading\"}[30d])) / 0.001 * 100",
+            "legendFormat": "Finance Trading - Budget Remaining"
+          },
+          {
+            "expr": "100 - (1 - rate(http_requests_total{job=\"pharma-manufacturing\",code=~\"2..\"}[30d]) / rate(http_requests_total{job=\"pharma-manufacturing\"}[30d])) / 0.0005 * 100", 
+            "legendFormat": "Pharma Manufacturing - Budget Remaining"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Budget Remaining (%)",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24}
+      },
+      {
+        "id": 6,
+        "title": "⚠️ SRE: Error Budget Policy Status",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "label_replace(\n  (\n    100 - (\n      rate(http_requests_total{job=~\"finance-trading|pharma-manufacturing\",code=~\"[45]..\"}[30d]) / \n      rate(http_requests_total{job=~\"finance-trading|pharma-manufacturing\"}[30d]) * 100\n    ) / \n    on(job) group_left \n    label_replace(\n      label_replace(vector(0.1), \"job\", \"finance-trading\", \"\", \"\") or\n      label_replace(vector(0.05), \"job\", \"pharma-manufacturing\", \"\", \"\"),\n      \"threshold\", \"$1\", \"job\", \"(.+)\"\n    ) * 100\n  ),\n  \"service\", \"$1\", \"job\", \"(.+)\"\n)",
+            "legendFormat": "{{service}} Budget Remaining",
+            "format": "table"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "service": "Service",
+                "Value": "Budget Remaining (%)"
+              }
+            }
+          }
+        ],
+        "gridPos": {"h": 6, "w": 24, "x": 0, "y": 32}
+      }
+    ],
+    "time": {
+      "from": "now-30d",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "🚨 SRE: Error Budget Alerts",
+          "datasource": "Prometheus",
+          "expr": "ALERTS{alertname=~\".*Error.*Budget.*\"}",
+          "iconColor": "red",
+          "tags": ["sre", "error-budget"]
+        }
+      ]
+    },
+    "refresh": "30s",
+    "schemaVersion": 16,
+    "version": 1,
+    "links": [
+      {
+        "title": "📚 SRE: Error Budget Documentation",
+        "url": "/docs/sre/error-budgets",
+        "type": "link"
+      },
+      {
+        "title": "🎯 SRE: SLO Definitions", 
+        "url": "/docs/sre/slo-definitions",
+        "type": "link"
+      }
+    ]
+  }
+}
+
+// 📝 SRE Dashboard Notes:
+// =======================
+// 1. This Grafana dashboard visualizes error budget consumption for both applications
+// 2. Color-coded panels show healthy (green), warning (yellow), and critical (red) states  
+// 3. Burn rate graphs help predict when error budgets will be exhausted
+// 4. Alerts fire when fast burn rates are detected
+// 5. Table view provides quick overview of all services' budget status
+// 6. 30-day rolling window aligns with SLO measurement periods
+// 7. Annotations show when error budget policies were triggered

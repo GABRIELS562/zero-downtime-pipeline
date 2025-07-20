@@ -1,0 +1,303 @@
+# Docker Compose for Finance Trading Application
+# Local development environment with all services
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-trading_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-trading_password}
+      POSTGRES_DB: ${DB_NAME:-trading_db}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/db-init:/docker-entrypoint-initdb.d
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-trading_user} -d ${DB_NAME:-trading_db}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - trading-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - trading-network
+
+  # Database Migration Service
+  migration:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-trading_user}
+      DB_PASSWORD: ${DB_PASSWORD:-trading_password}
+      DB_NAME: ${DB_NAME:-trading_db}
+    volumes:
+      - ./src/database:/app/src/database
+      - ./scripts:/app/scripts
+    networks:
+      - trading-network
+
+  # Database Initialization Service
+  db-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-trading_user}
+      DB_PASSWORD: ${DB_PASSWORD:-trading_password}
+      DB_NAME: ${DB_NAME:-trading_db}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      APP_ENV: development
+    command: ["python", "scripts/init_database.py"]
+    volumes:
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+    networks:
+      - trading-network
+
+  # Main Trading Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+      args:
+        BUILD_ID: ${BUILD_ID:-dev-build}
+        GIT_COMMIT: ${GIT_COMMIT:-dev-commit}
+        BUILD_TIMESTAMP: ${BUILD_TIMESTAMP:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      # Database Configuration
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-trading_user}
+      DB_PASSWORD: ${DB_PASSWORD:-trading_password}
+      DB_NAME: ${DB_NAME:-trading_db}
+      DB_POOL_SIZE: 20
+      DB_MAX_OVERFLOW: 30
+      
+      # Redis Configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # Application Configuration
+      APP_ENV: development
+      LOG_LEVEL: debug
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      
+      # Trading Configuration
+      MARKET_DATA_PROVIDER: demo
+      ORDER_EXECUTION_MODE: simulation
+      
+      # Compliance Configuration
+      SOX_COMPLIANCE_ENABLED: true
+      AUDIT_LOG_LEVEL: info
+      
+      # Security Configuration
+      CORS_ORIGINS: "*"
+      ALLOWED_HOSTS: "localhost,127.0.0.1,0.0.0.0"
+      
+      # Monitoring Configuration
+      METRICS_ENABLED: true
+      PROMETHEUS_PORT: 9090
+      
+      # Development Configuration
+      RELOAD: true
+      DEBUG: true
+    ports:
+      - "${APP_PORT:-8000}:8000"
+      - "${METRICS_PORT:-9090}:9090"
+    volumes:
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+      - app_logs:/app/logs
+      - app_data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - trading-network
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    ports:
+      - "${PROMETHEUS_PORT:-9091}:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - trading-network
+
+  # Grafana Dashboards
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - trading-network
+
+  # Nginx Load Balancer
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "${NGINX_PORT:-80}:80"
+      - "${NGINX_SSL_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - app
+    networks:
+      - trading-network
+
+  # Test Runner
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: testing
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-trading_user}
+      DB_PASSWORD: ${DB_PASSWORD:-trading_password}
+      DB_NAME: ${DB_NAME:-trading_db}_test
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      APP_ENV: testing
+      TESTING: true
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./reports:/app/reports
+    networks:
+      - trading-network
+    profiles:
+      - testing
+
+  # PgAdmin for Database Management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@trading.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - trading-network
+    profiles:
+      - dev-tools
+
+  # Redis Commander for Redis Management
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "${REDIS_COMMANDER_PORT:-8081}:8081"
+    depends_on:
+      - redis
+    networks:
+      - trading-network
+    profiles:
+      - dev-tools
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  app_logs:
+    driver: local
+  app_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  nginx_logs:
+    driver: local
+
+networks:
+  trading-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

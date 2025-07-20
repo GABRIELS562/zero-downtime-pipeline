@@ -1,0 +1,89 @@
+{
+  "timestamp": "unknown",
+  "summary": {
+    "total_checks": 27,
+    "passed": 27,
+    "failed": 0,
+    "not_implemented": 0,
+    "success_rate": 100.0,
+    "categories": {
+      "Environment Files": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "not_implemented": 0
+      },
+      "Database Models": {
+        "total": 10,
+        "passed": 10,
+        "failed": 0,
+        "not_implemented": 0
+      },
+      "Docker Configuration": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "not_implemented": 0
+      },
+      "Scripts": {
+        "total": 5,
+        "passed": 5,
+        "failed": 0,
+        "not_implemented": 0
+      },
+      "Database Schemas": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "not_implemented": 0
+      },
+      "Core System": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "not_implemented": 0
+      }
+    }
+  },
+  "detailed_results": {
+    "Environment Files": {
+      "Development": true,
+      "Testing": true,
+      "Production": true
+    },
+    "Database Models": {
+      "Base Models": true,
+      "Batch Models": true,
+      "Equipment Models": true,
+      "Material Models": true,
+      "Quality Control Models": true,
+      "Environmental Models": true,
+      "User Models": true,
+      "Audit Models": true,
+      "Deviation Models": true,
+      "Models Init": true
+    },
+    "Docker Configuration": {
+      "Dockerfile": true,
+      "Docker Compose": true,
+      "Docker Override": true,
+      "Requirements": true
+    },
+    "Scripts": {
+      "Health Monitor": true,
+      "Backup Recovery (Simple)": true,
+      "Database Init": true,
+      "DB Init SQL": true,
+      "System Verify": true
+    },
+    "Database Schemas": {
+      "Base Schemas": true,
+      "Batch Schemas": true,
+      "Quality Schemas": true
+    },
+    "Core System": {
+      "Database Connection": true,
+      "Main Application": true
+    }
+  }
+}

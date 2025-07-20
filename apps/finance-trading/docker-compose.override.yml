@@ -1,0 +1,107 @@
+# Docker Compose Override File
+# Local development overrides and customizations
+
+version: '3.8'
+
+services:
+  # Override app service for development
+  app:
+    volumes:
+      # Live code reloading
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+      - ./config:/app/config
+      # Development logs
+      - app_logs_dev:/app/logs
+      # Development data
+      - app_data_dev:/app/data
+    environment:
+      # Development specific overrides
+      - PYTHONPATH=/app/src
+      - RELOAD=true
+      - DEBUG=true
+      - LOG_LEVEL=debug
+    ports:
+      # Expose additional ports for debugging
+      - "8001:8000"  # Alternative port
+      - "5678:5678"  # Python debugger port
+
+  # Development database with persistent data
+  postgres:
+    volumes:
+      # Development database data
+      - postgres_data_dev:/var/lib/postgresql/data
+      # Custom PostgreSQL configuration
+      - ./config/postgresql.dev.conf:/etc/postgresql/postgresql.conf
+      # Database initialization scripts
+      - ./scripts/db-init:/docker-entrypoint-initdb.d
+    environment:
+      # Development database settings
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --locale=C
+    ports:
+      - "5433:5432"  # Alternative port for external connections
+
+  # Development Redis with persistence
+  redis:
+    volumes:
+      # Development Redis data
+      - redis_data_dev:/data
+      # Custom Redis configuration
+      - ./config/redis.dev.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    ports:
+      - "6380:6379"  # Alternative port
+
+  # File watcher for development
+  file-watcher:
+    image: node:18-alpine
+    working_dir: /app
+    volumes:
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+    command: >
+      sh -c "
+        npm install -g nodemon &&
+        nodemon --watch src --ext py,yaml,json --exec 'echo File changed at \$(date)'
+      "
+    profiles:
+      - dev-tools
+
+  # Local mail server for testing
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    profiles:
+      - dev-tools
+
+volumes:
+  # Development-specific volumes
+  postgres_data_dev:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/volumes/postgres-dev
+  
+  redis_data_dev:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/volumes/redis-dev
+  
+  app_logs_dev:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/volumes/logs-dev
+  
+  app_data_dev:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/volumes/data-dev

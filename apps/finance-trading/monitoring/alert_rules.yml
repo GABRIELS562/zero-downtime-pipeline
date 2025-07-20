@@ -1,0 +1,201 @@
+# Prometheus Alert Rules for Trading System
+# Critical alerts for trading system monitoring
+
+groups:
+  - name: trading.app.alerts
+    rules:
+      # High-level application alerts
+      - alert: TradingAppDown
+        expr: up{job="trading-app"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: trading-app
+        annotations:
+          summary: "Trading application is down"
+          description: "Trading application instance {{ $labels.instance }} has been down for more than 30 seconds"
+
+      - alert: TradingAppHighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="trading-app"}[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: trading-app
+        annotations:
+          summary: "Trading application high latency"
+          description: "95th percentile latency is {{ $value }}s for {{ $labels.instance }}"
+
+      - alert: TradingAppHighErrorRate
+        expr: rate(http_requests_total{job="trading-app",status=~"5.."}[5m]) / rate(http_requests_total{job="trading-app"}[5m]) > 0.01
+        for: 1m
+        labels:
+          severity: warning
+          service: trading-app
+        annotations:
+          summary: "Trading application high error rate"
+          description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+
+  - name: trading.business.alerts
+    rules:
+      # Business-critical alerts
+      - alert: OrderProcessingFailure
+        expr: rate(order_processing_failures_total[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: critical
+          service: order-processing
+        annotations:
+          summary: "High order processing failure rate"
+          description: "Order processing failure rate is {{ $value }} failures/second"
+
+      - alert: MarketDataStale
+        expr: time() - market_data_last_update_timestamp > 60
+        for: 30s
+        labels:
+          severity: critical
+          service: market-data
+        annotations:
+          summary: "Market data is stale"
+          description: "Market data hasn't been updated for {{ $value }} seconds"
+
+      - alert: PositionCalculationError
+        expr: rate(position_calculation_errors_total[5m]) > 0
+        for: 30s
+        labels:
+          severity: critical
+          service: portfolio
+        annotations:
+          summary: "Position calculation errors detected"
+          description: "Position calculation error rate: {{ $value }} errors/second"
+
+      - alert: ComplianceViolation
+        expr: increase(compliance_violations_total[5m]) > 0
+        for: 0s
+        labels:
+          severity: critical
+          service: compliance
+        annotations:
+          summary: "Compliance violation detected"
+          description: "{{ $value }} compliance violations in the last 5 minutes"
+
+  - name: trading.database.alerts
+    rules:
+      # Database alerts
+      - alert: DatabaseDown
+        expr: up{job="postgres"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "Database is down"
+          description: "PostgreSQL database is unreachable"
+
+      - alert: DatabaseHighConnections
+        expr: pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+        for: 2m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "Database connection usage high"
+          description: "Database connection usage is {{ $value | humanizePercentage }}"
+
+      - alert: DatabaseSlowQueries
+        expr: rate(pg_stat_statements_mean_time_ms[5m]) > 1000
+        for: 2m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "Database queries are slow"
+          description: "Average query time is {{ $value }}ms"
+
+  - name: trading.infrastructure.alerts
+    rules:
+      # Infrastructure alerts
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: redis
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache is unreachable"
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.9
+        for: 2m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 2m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: DiskSpaceRunningOut
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) < 0.1
+        for: 1m
+        labels:
+          severity: critical
+          service: system
+        annotations:
+          summary: "Disk space running out"
+          description: "Disk space usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+  - name: trading.security.alerts
+    rules:
+      # Security alerts
+      - alert: UnauthorizedAccess
+        expr: increase(http_requests_total{status="401"}[5m]) > 10
+        for: 1m
+        labels:
+          severity: warning
+          service: security
+        annotations:
+          summary: "High number of unauthorized access attempts"
+          description: "{{ $value }} unauthorized access attempts in the last 5 minutes"
+
+      - alert: RateLimitExceeded
+        expr: increase(http_requests_total{status="429"}[1m]) > 100
+        for: 30s
+        labels:
+          severity: warning
+          service: security
+        annotations:
+          summary: "Rate limit exceeded"
+          description: "{{ $value }} rate limit violations in the last minute"
+
+  - name: trading.sla.alerts
+    rules:
+      # SLA alerts
+      - alert: SLAViolationAvailability
+        expr: (1 - rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m])) < 0.999
+        for: 1m
+        labels:
+          severity: critical
+          service: sla
+        annotations:
+          summary: "SLA availability violation"
+          description: "Service availability is {{ $value | humanizePercentage }}, below 99.9% SLA"
+
+      - alert: SLAViolationLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          service: sla
+        annotations:
+          summary: "SLA latency violation"
+          description: "95th percentile latency is {{ $value }}s, above 100ms SLA"

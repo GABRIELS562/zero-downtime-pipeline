@@ -1,0 +1,241 @@
+# Docker Compose for Production Environment
+# Optimized for production deployment with security and performance
+
+version: '3.8'
+
+services:
+  # Production Trading Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+      args:
+        BUILD_ID: ${BUILD_ID}
+        GIT_COMMIT: ${GIT_COMMIT}
+        BUILD_TIMESTAMP: ${BUILD_TIMESTAMP}
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    environment:
+      # Database Configuration
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_POOL_SIZE: 50
+      DB_MAX_OVERFLOW: 100
+      DB_POOL_TIMEOUT: 30
+      
+      # Redis Configuration
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      
+      # Application Configuration
+      APP_ENV: production
+      LOG_LEVEL: info
+      SECRET_KEY: ${SECRET_KEY}
+      
+      # Security Configuration
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      SECURE_COOKIES: true
+      SESSION_TIMEOUT: 3600
+      
+      # Trading Configuration
+      MARKET_DATA_PROVIDER: ${MARKET_DATA_PROVIDER}
+      ORDER_EXECUTION_MODE: ${ORDER_EXECUTION_MODE}
+      
+      # Compliance Configuration
+      SOX_COMPLIANCE_ENABLED: true
+      AUDIT_LOG_LEVEL: info
+      COMPLIANCE_REPORTING_ENABLED: true
+      
+      # Monitoring Configuration
+      METRICS_ENABLED: true
+      PROMETHEUS_PORT: 9090
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_ENDPOINT}
+      
+      # Performance Configuration
+      WORKERS: 4
+      WORKER_CLASS: uvicorn.workers.UvicornWorker
+      MAX_REQUESTS: 1000
+      MAX_REQUESTS_JITTER: 100
+      TIMEOUT: 30
+      KEEPALIVE: 5
+    ports:
+      - "8000:8000"
+      - "9090:9090"
+    volumes:
+      - app_logs:/app/logs
+      - app_data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.trading-app.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.trading-app.tls=true"
+      - "traefik.http.routers.trading-app.tls.certresolver=letsencrypt"
+      - "traefik.http.services.trading-app.loadbalancer.server.port=8000"
+    networks:
+      - trading-network
+
+  # Nginx Load Balancer
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - app
+    networks:
+      - trading-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus.prod.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.wal-compression'
+    networks:
+      - trading-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  # Grafana Dashboards
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: false
+      GF_SECURITY_DISABLE_GRAVATAR: true
+      GF_ANALYTICS_REPORTING_ENABLED: false
+      GF_SECURITY_COOKIE_SECURE: true
+      GF_SECURITY_COOKIE_SAMESITE: strict
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - trading-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  # Database Migration Service
+  migration:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrations
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    volumes:
+      - ./src/database:/app/src/database
+      - ./scripts:/app/scripts
+    deploy:
+      restart_policy:
+        condition: on-failure
+    networks:
+      - trading-network
+
+  # Log Aggregator
+  fluentd:
+    image: fluent/fluentd:v1.16-debian-1
+    restart: unless-stopped
+    volumes:
+      - ./logging/fluentd.conf:/fluentd/etc/fluent.conf
+      - app_logs:/var/log/app
+      - nginx_logs:/var/log/nginx
+    ports:
+      - "24224:24224"
+    environment:
+      FLUENTD_CONF: fluent.conf
+    networks:
+      - trading-network
+
+volumes:
+  app_logs:
+    driver: local
+  app_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  nginx_logs:
+    driver: local
+
+networks:
+  trading-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Production secrets management
+secrets:
+  db_password:
+    external: true
+  redis_password:
+    external: true
+  secret_key:
+    external: true

@@ -1,0 +1,77 @@
+# Prometheus Configuration for Trading System
+# Production environment monitoring setup
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: 'production'
+    cluster: 'trading-prod'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Load rules
+rule_files:
+  - "alert_rules.yml"
+  - "recording_rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  # Trading application (multiple instances)
+  - job_name: 'trading-app'
+    dns_sd_configs:
+      - names:
+          - 'trading-app.trading.svc.cluster.local'
+        type: 'A'
+        port: 9090
+    metrics_path: '/metrics/prometheus'
+    scrape_interval: 5s
+    scrape_timeout: 10s
+
+  # Health checks
+  - job_name: 'trading-health'
+    dns_sd_configs:
+      - names:
+          - 'trading-app.trading.svc.cluster.local'
+        type: 'A'
+        port: 8000
+    metrics_path: '/health/summary'
+    scrape_interval: 10s
+
+  # External database
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['${DB_HOST}:${DB_PORT}']
+    scrape_interval: 15s
+
+  # External Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['${REDIS_HOST}:${REDIS_PORT}']
+    scrape_interval: 15s
+
+# Remote write for long-term storage
+remote_write:
+  - url: "${REMOTE_WRITE_URL}"
+    basic_auth:
+      username: "${REMOTE_WRITE_USERNAME}"
+      password: "${REMOTE_WRITE_PASSWORD}"
+
+# Storage configuration
+storage:
+  tsdb:
+    path: /prometheus
+    retention.time: 30d
+    retention.size: 10GB

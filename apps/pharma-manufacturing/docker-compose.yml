@@ -1,0 +1,381 @@
+# Docker Compose for Pharmaceutical Manufacturing System
+# GMP-compliant development environment
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database for GMP compliance
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-pharma_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-pharma_password}
+      POSTGRES_DB: ${DB_NAME:-pharma_manufacturing_db}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/db-init:/docker-entrypoint-initdb.d
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-pharma_user} -d ${DB_NAME:-pharma_manufacturing_db}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - pharma-network
+
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - pharma-network
+
+  # Database Migration Service
+  migration:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-pharma_user}
+      DB_PASSWORD: ${DB_PASSWORD:-pharma_password}
+      DB_NAME: ${DB_NAME:-pharma_manufacturing_db}
+    volumes:
+      - ./src/database:/app/src/database
+      - ./scripts:/app/scripts
+    networks:
+      - pharma-network
+
+  # Main Pharmaceutical Manufacturing Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+      args:
+        BUILD_ID: ${BUILD_ID:-dev-build}
+        GIT_COMMIT: ${GIT_COMMIT:-dev-commit}
+        BUILD_TIMESTAMP: ${BUILD_TIMESTAMP:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
+    environment:
+      # Database Configuration
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-pharma_user}
+      DB_PASSWORD: ${DB_PASSWORD:-pharma_password}
+      DB_NAME: ${DB_NAME:-pharma_manufacturing_db}
+      DB_POOL_SIZE: 20
+      DB_MAX_OVERFLOW: 30
+      
+      # Redis Configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # Application Configuration
+      APP_ENV: development
+      LOG_LEVEL: debug
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      
+      # Manufacturing Configuration
+      EQUIPMENT_SIMULATOR_ENABLED: true
+      ENVIRONMENTAL_MONITORING_ENABLED: true
+      QUALITY_CONTROL_ENABLED: true
+      
+      # GMP Compliance Configuration
+      GMP_COMPLIANCE_ENABLED: true
+      FDA_VALIDATION_ENABLED: true
+      AUDIT_TRAIL_ENABLED: true
+      DATA_INTEGRITY_CHECKS: true
+      
+      # Security Configuration
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:8000,http://localhost:8080"
+      ALLOWED_HOSTS: "localhost,127.0.0.1,0.0.0.0,host.docker.internal"
+      SECURE_COOKIES: false
+      
+      # Monitoring Configuration
+      METRICS_ENABLED: true
+      PROMETHEUS_PORT: 9090
+      HEALTH_CHECK_INTERVAL: 30
+      
+      # Alert Configuration
+      ALERT_SYSTEM_ENABLED: true
+      EMAIL_NOTIFICATIONS_ENABLED: false
+      SLACK_NOTIFICATIONS_ENABLED: false
+      
+      # Development Configuration
+      RELOAD: true
+      DEBUG: true
+    ports:
+      - "${APP_PORT:-8000}:8000"
+      - "${METRICS_PORT:-9090}:9090"
+    volumes:
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+      - ./templates:/app/templates
+      - app_logs:/app/logs
+      - app_data:/app/data
+      - app_reports:/app/reports
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - pharma-network
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    ports:
+      - "${PROMETHEUS_PORT:-9091}:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - pharma-network
+
+  # Grafana Dashboards
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: false
+      GF_INSTALL_PLUGINS: "grafana-clock-panel,grafana-simple-json-datasource"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - pharma-network
+
+  # Equipment Simulator (for development/testing)
+  equipment-simulator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      SIMULATOR_MODE: equipment
+      APP_HOST: app
+      APP_PORT: 8000
+      SIMULATION_INTERVAL: 30
+    command: ["python", "scripts/equipment_simulator.py"]
+    volumes:
+      - ./scripts:/app/scripts
+    networks:
+      - pharma-network
+    profiles:
+      - simulation
+
+  # Environmental Simulator (for development/testing)
+  environmental-simulator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      SIMULATOR_MODE: environmental
+      APP_HOST: app
+      APP_PORT: 8000
+      SIMULATION_INTERVAL: 60
+    command: ["python", "scripts/environmental_simulator.py"]
+    volumes:
+      - ./scripts:/app/scripts
+    networks:
+      - pharma-network
+    profiles:
+      - simulation
+
+  # Test Runner
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: testing
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-pharma_user}
+      DB_PASSWORD: ${DB_PASSWORD:-pharma_password}
+      DB_NAME: ${DB_NAME:-pharma_manufacturing_db}_test
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      APP_ENV: testing
+      TESTING: true
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./reports:/app/reports
+    networks:
+      - pharma-network
+    profiles:
+      - testing
+
+  # Report Generator
+  reports:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: reports
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      APP_HOST: app
+      APP_PORT: 8000
+      REPORT_OUTPUT_DIR: /app/reports
+    volumes:
+      - ./templates:/app/templates
+      - app_reports:/app/reports
+    networks:
+      - pharma-network
+    profiles:
+      - reports
+
+  # PgAdmin for Database Management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@pharma.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - pharma-network
+    profiles:
+      - dev-tools
+
+  # Redis Commander for Redis Management
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "${REDIS_COMMANDER_PORT:-8081}:8081"
+    depends_on:
+      - redis
+    networks:
+      - pharma-network
+    profiles:
+      - dev-tools
+
+  # Security Scanner
+  security-scan:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: security-scan
+    volumes:
+      - ./src:/app/src
+      - ./reports:/app/reports
+    networks:
+      - pharma-network
+    profiles:
+      - security
+
+  # Backup Service
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backup
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-pharma_user}
+      DB_PASSWORD: ${DB_PASSWORD:-pharma_password}
+      DB_NAME: ${DB_NAME:-pharma_manufacturing_db}
+      BACKUP_SCHEDULE: "0 2 * * *"  # Daily at 2 AM
+      BACKUP_RETENTION_DAYS: 30
+    volumes:
+      - app_data:/app/data
+      - app_backups:/app/backups
+    networks:
+      - pharma-network
+    profiles:
+      - backup
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  app_logs:
+    driver: local
+  app_data:
+    driver: local
+  app_reports:
+    driver: local
+  app_backups:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  pharma-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16

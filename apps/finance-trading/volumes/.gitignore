@@ -1,0 +1,4 @@
+# Ignore all volume data but keep the directory structure
+*
+!.gitignore
+!README.md

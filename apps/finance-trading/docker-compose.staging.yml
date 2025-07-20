@@ -1,0 +1,281 @@
+# Docker Compose for Staging Environment
+# Testing environment that mirrors production
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database for Staging
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/db-init:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - trading-network
+
+  # Redis Cache for Staging
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - trading-network
+
+  # Database Migration Service
+  migration:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    volumes:
+      - ./src/database:/app/src/database
+      - ./scripts:/app/scripts
+    networks:
+      - trading-network
+
+  # Database Initialization Service
+  db-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      APP_ENV: staging
+    command: ["python", "scripts/init_database.py"]
+    volumes:
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+    networks:
+      - trading-network
+
+  # Staging Trading Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+      args:
+        BUILD_ID: ${BUILD_ID}
+        GIT_COMMIT: ${GIT_COMMIT}
+        BUILD_TIMESTAMP: ${BUILD_TIMESTAMP}
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      # Database Configuration
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_POOL_SIZE: 20
+      DB_MAX_OVERFLOW: 40
+      
+      # Redis Configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # Application Configuration
+      APP_ENV: staging
+      LOG_LEVEL: info
+      SECRET_KEY: ${SECRET_KEY}
+      
+      # Security Configuration
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      SECURE_COOKIES: true
+      
+      # Trading Configuration
+      MARKET_DATA_PROVIDER: demo
+      ORDER_EXECUTION_MODE: simulation
+      
+      # Compliance Configuration
+      SOX_COMPLIANCE_ENABLED: true
+      AUDIT_LOG_LEVEL: info
+      
+      # Monitoring Configuration
+      METRICS_ENABLED: true
+      PROMETHEUS_PORT: 9090
+      
+      # Performance Configuration
+      WORKERS: 2
+      WORKER_CLASS: uvicorn.workers.UvicornWorker
+      MAX_REQUESTS: 1000
+      TIMEOUT: 30
+    ports:
+      - "8000:8000"
+      - "9090:9090"
+    volumes:
+      - app_logs:/app/logs
+      - app_data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - trading-network
+
+  # Nginx Load Balancer
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.staging.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - app
+    networks:
+      - trading-network
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus.staging.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+    networks:
+      - trading-network
+
+  # Grafana Dashboards
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: false
+      GF_SECURITY_DISABLE_GRAVATAR: true
+      GF_ANALYTICS_REPORTING_ENABLED: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - trading-network
+
+  # Test Runner for Staging
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: testing
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}_test
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      APP_ENV: staging
+      TESTING: true
+      TEST_API_BASE_URL: http://app:8000
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./reports:/app/reports
+    networks:
+      - trading-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  app_logs:
+    driver: local
+  app_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  nginx_logs:
+    driver: local
+
+networks:
+  trading-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

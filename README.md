@@ -24,7 +24,7 @@ This project demonstrates the application of **forensic investigation methodolog
 - **Cloud-Native Architecture**: Scalable EKS infrastructure with 99.99% uptime
 - **Advanced CI/CD**: Jenkins pipeline with forensic risk assessment
 - **Security Excellence**: Comprehensive scanning with zero critical vulnerabilities
-- **Compliance Mastery**: FDA 21 CFR Part 11 and SOX compliance automation
+- **Compliance Mastery**: FDA 21 CFR Part 11 and SOX compliance automation (SA: Companies Act 71)
 
 ### Business Impact
 - **Revenue Protection**: Real-time monitoring prevents $2M+ potential losses
@@ -111,6 +111,11 @@ zero-downtime-pipeline/
 ├── 📁 scripts/                       # Deployment automation
 │   ├── 📄 deployment-workflow.sh     # Forensic deployment script
 │   └── 📄 init-databases.sql         # Database initialization
+├── 📁 sre/                           # 🎯 Site Reliability Engineering
+│   ├── 📄 README.md                  # SRE implementation guide
+│   ├── 📁 slo-definitions/           # Service Level Objectives
+│   ├── 📁 error-budgets/             # Error budget tracking
+│   └── 📁 runbooks/                  # Incident response procedures
 ├── 📁 .github/workflows/             # GitHub Actions
 │   └── 📄 security-compliance.yml    # Security & compliance
 ├── 📁 docs/                          # Documentation
@@ -234,6 +239,7 @@ kubectl apply -f pharma-manufacturing/
 - **DevOps Excellence**: CI/CD pipeline design and implementation
 - **Security Integration**: Comprehensive scanning and compliance
 - **Monitoring & Observability**: Business-focused dashboards and alerting
+- **🎯 SRE Fundamentals**: SLI/SLO management, error budgets, reliability engineering
 
 ### Business Skills Demonstrated
 - **Risk Management**: Proactive assessment and mitigation strategies
