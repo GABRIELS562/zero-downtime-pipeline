@@ -5,6 +5,7 @@ Ultra-low latency health checks and business-critical monitoring
 
 import asyncio
 import time
+from datetime import datetime
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
