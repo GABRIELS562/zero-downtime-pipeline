@@ -90,30 +90,25 @@ services:
       - "forensic.business_impact=critical"
       - "forensic.efficiency_requirement=98%"
 
-  # Market Data Simulator (for Finance Trading)
+  # Market Data WebSocket Server (for Finance Trading)
   market-data-simulator:
-    image: python:3.11-alpine
+    build:
+      context: ./apps/finance-trading
+      dockerfile: Dockerfile
+      target: dependencies
     container_name: market-data-simulator
     ports:
       - "8082:8082"
-    command: >
-      sh -c "
-      pip install aiohttp &&
-      python -c \"
-      import asyncio;
-      from aiohttp import web;
-      async def health(request): return web.json_response({'status': 'healthy'});
-      app = web.Application();
-      app.router.add_get('/health', health);
-      print('Market data simulator ready');
-      web.run_app(app, host='0.0.0.0', port=8082)
-      \"
-      "
+    command: python src/websocket_server.py
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - ./apps/finance-trading/src:/app/src:ro
     networks:
       - trading-network
     labels:
       - "forensic.service=market-data-simulator"
-      - "forensic.type=test-infrastructure"
+      - "forensic.type=websocket-server"
 
   # Sensor Simulator (for Pharma Manufacturing)
   sensor-simulator:
@@ -246,12 +241,27 @@ services:
       - "forensic.service=load-balancer"
       - "forensic.type=infrastructure"
 
+  # Frontend Dashboard
+  frontend:
+    image: nginx:alpine
+    container_name: frontend-dashboard
+    ports:
+      - "8000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    networks:
+      - monitoring-network
+      - trading-network
+    labels:
+      - "forensic.service=frontend"
+      - "forensic.type=dashboard"
+
   # Jenkins for CI/CD (Optional - for testing pipeline)
   jenkins:
     image: jenkins/jenkins:lts
     container_name: jenkins-cicd
     ports:
-      - "8080:8080"
+      - "8081:8080"  # Changed from 8080 to avoid conflict with finance-trading
       - "50000:50000"
     environment:
       - JENKINS_OPTS=--httpPort=8080

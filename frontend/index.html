@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zero-Downtime Trading System | DevOps Portfolio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes pulse-green {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .pulse-green { animation: pulse-green 2s infinite; }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .slide-in { animation: slideIn 0.5s ease-out; }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Mobile responsive styles */
+        @media (max-width: 768px) {
+            .container { padding: 0 0.5rem; }
+            h1 { font-size: 1.25rem !important; }
+            .text-2xl { font-size: 1.25rem !important; }
+            .text-xl { font-size: 1.125rem !important; }
+            .text-sm { font-size: 0.75rem !important; }
+            
+            /* Stack header elements on mobile */
+            header .flex { flex-direction: column; gap: 1rem; }
+            header .flex > div { text-align: center; }
+            
+            /* Adjust chart height for mobile */
+            #priceChart { max-height: 200px; }
+            
+            /* Make cards stack on mobile */
+            .grid { grid-template-columns: 1fr !important; }
+            
+            /* Hide less important elements on mobile */
+            .mobile-hide { display: none; }
+            
+            /* Adjust button sizes */
+            button { padding: 0.5rem 1rem; font-size: 0.875rem; }
+            
+            /* Fix notification position */
+            .fixed { right: 1rem !important; }
+        }
+        
+        /* Ensure charts are responsive */
+        canvas { max-width: 100%; height: auto !important; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Header -->
+    <header class="gradient-bg shadow-lg">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-chart-line text-3xl"></i>
+                    <div>
+                        <h1 class="text-2xl font-bold">Zero-Downtime Trading System</h1>
+                        <p class="text-sm opacity-90">Forensic DevOps Portfolio Demonstration</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <div class="text-center">
+                        <p class="text-xs opacity-75">Deployment Success</p>
+                        <p class="text-xl font-bold">99.5%</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-xs opacity-75">System Uptime</p>
+                        <p class="text-xl font-bold">99.99%</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-xs opacity-75">MTTR</p>
+                        <p class="text-xl font-bold">3 min</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-6">
+        <!-- System Status Bar -->
+        <div class="glass-effect rounded-lg p-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-400">Finance Trading</p>
+                            <p class="text-lg font-bold text-green-400">OPERATIONAL</p>
+                        </div>
+                        <i class="fas fa-check-circle text-green-400 text-2xl pulse-green"></i>
+                    </div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-400">Pharma Manufacturing</p>
+                            <p class="text-lg font-bold text-green-400">OPERATIONAL</p>
+                        </div>
+                        <i class="fas fa-check-circle text-green-400 text-2xl pulse-green"></i>
+                    </div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-400">Compliance Status</p>
+                            <p class="text-lg font-bold text-blue-400">COMPLIANT</p>
+                        </div>
+                        <i class="fas fa-shield-alt text-blue-400 text-2xl"></i>
+                    </div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-400">Active Deployments</p>
+                            <p class="text-lg font-bold text-purple-400">2 RUNNING</p>
+                        </div>
+                        <i class="fas fa-rocket text-purple-400 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Market Data Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <!-- Live Market Prices -->
+            <div class="lg:col-span-2 bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-bold mb-4 flex items-center">
+                    <i class="fas fa-chart-line mr-2"></i>
+                    Live Market Data (Alpha Vantage)
+                </h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="marketData">
+                    <!-- Market data will be inserted here -->
+                </div>
+                <canvas id="priceChart" class="mt-6" height="100"></canvas>
+            </div>
+
+            <!-- Trading Metrics -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-bold mb-4 flex items-center">
+                    <i class="fas fa-tachometer-alt mr-2"></i>
+                    Trading Metrics
+                </h2>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Latency</span>
+                        <span class="font-bold text-green-400" id="latency">12ms</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Orders/sec</span>
+                        <span class="font-bold" id="ordersPerSec">142</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Success Rate</span>
+                        <span class="font-bold text-green-400">99.99%</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Daily Volume</span>
+                        <span class="font-bold" id="volume">$2.4M</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">P&L</span>
+                        <span class="font-bold text-green-400">+$124,532</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deployment Pipeline -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4 flex items-center">
+                <i class="fas fa-code-branch mr-2"></i>
+                CI/CD Pipeline Status
+            </h2>
+            <div class="flex items-center justify-between">
+                <div class="flex-1">
+                    <div class="flex items-center space-x-4">
+                        <div class="text-center">
+                            <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mb-2">
+                                <i class="fas fa-code text-white"></i>
+                            </div>
+                            <p class="text-xs">Source</p>
+                        </div>
+                        <div class="flex-1 h-1 bg-green-500"></div>
+                        <div class="text-center">
+                            <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mb-2">
+                                <i class="fas fa-hammer text-white"></i>
+                            </div>
+                            <p class="text-xs">Build</p>
+                        </div>
+                        <div class="flex-1 h-1 bg-green-500"></div>
+                        <div class="text-center">
+                            <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mb-2">
+                                <i class="fas fa-vial text-white"></i>
+                            </div>
+                            <p class="text-xs">Test</p>
+                        </div>
+                        <div class="flex-1 h-1 bg-green-500"></div>
+                        <div class="text-center">
+                            <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center mb-2 pulse-green">
+                                <i class="fas fa-rocket text-white"></i>
+                            </div>
+                            <p class="text-xs">Deploy</p>
+                        </div>
+                        <div class="flex-1 h-1 bg-gray-600"></div>
+                        <div class="text-center">
+                            <div class="w-12 h-12 bg-gray-600 rounded-full flex items-center justify-center mb-2">
+                                <i class="fas fa-check text-white"></i>
+                            </div>
+                            <p class="text-xs">Monitor</p>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="triggerDeployment()" class="ml-6 bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg font-bold transition-colors">
+                    <i class="fas fa-play mr-2"></i>
+                    Trigger Deployment
+                </button>
+            </div>
+        </div>
+
+        <!-- Forensic DevOps Metrics -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Risk Assessment -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-bold mb-4 flex items-center">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    Risk Assessment
+                </h2>
+                <div class="space-y-3">
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm">Environment Risk</span>
+                            <span class="text-sm">Low</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div class="bg-green-500 h-2 rounded-full" style="width: 20%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm">Application Risk</span>
+                            <span class="text-sm">Medium</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div class="bg-yellow-500 h-2 rounded-full" style="width: 45%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm">Compliance Risk</span>
+                            <span class="text-sm">Low</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div class="bg-green-500 h-2 rounded-full" style="width: 10%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compliance Dashboard -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-bold mb-4 flex items-center">
+                    <i class="fas fa-clipboard-check mr-2"></i>
+                    Compliance Status
+                </h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-green-400">SOX</div>
+                        <p class="text-sm text-gray-400">Compliant</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-green-400">FDA</div>
+                        <p class="text-sm text-gray-400">21 CFR Part 11</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-blue-400">0</div>
+                        <p class="text-sm text-gray-400">Violations</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-blue-400">100%</div>
+                        <p class="text-sm text-gray-400">Audit Ready</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-12 py-6 border-t border-gray-700">
+        <div class="container mx-auto px-4 text-center text-gray-400">
+            <p>Zero-Downtime Pipeline | Forensic DevOps Methodology | Built with ❤️ for Portfolio Demonstration</p>
+            <div class="mt-2 flex flex-wrap justify-center gap-4">
+                <a href="http://localhost:3000" class="hover:text-white transition-colors">
+                    <i class="fas fa-chart-bar mr-1"></i> Grafana
+                </a>
+                <a href="http://localhost:8080/api/docs" class="hover:text-white transition-colors">
+                    <i class="fas fa-book mr-1"></i> API Docs
+                </a>
+                <a href="http://localhost:9090" class="hover:text-white transition-colors mobile-hide">
+                    <i class="fas fa-server mr-1"></i> Prometheus
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

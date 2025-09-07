@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pharma Manufacturing Control System | FDA 21 CFR Part 11 Compliant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+        .pulse-animation { animation: pulse 2s infinite; }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .rotate-animation { animation: rotate 2s linear infinite; }
+        
+        .gradient-health {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        
+        .gradient-pharma {
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .warning-glow {
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+        }
+        
+        .success-glow {
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+        }
+        
+        /* Mobile responsive styles for Pharma Dashboard */
+        @media (max-width: 768px) {
+            .container { padding: 0 0.5rem; }
+            h1 { font-size: 1.25rem !important; }
+            .text-2xl { font-size: 1.25rem !important; }
+            .text-xl { font-size: 1rem !important; }
+            .text-sm { font-size: 0.75rem !important; }
+            .text-xs { font-size: 0.625rem !important; }
+            
+            /* Stack header on mobile */
+            header .flex { 
+                flex-direction: column; 
+                gap: 0.5rem;
+                text-align: center;
+            }
+            
+            /* Responsive grids */
+            .grid { 
+                grid-template-columns: 1fr !important; 
+                gap: 0.5rem !important;
+            }
+            
+            /* Adjust production line cards */
+            .bg-gray-800 { padding: 0.75rem !important; }
+            
+            /* Make charts responsive */
+            #environmentChart, #productionChart { 
+                max-height: 200px !important; 
+            }
+            
+            /* Stack environmental monitoring on mobile */
+            .lg\\:col-span-2 { 
+                grid-column: span 1 !important; 
+            }
+            
+            /* Simplify glows on mobile */
+            .warning-glow, .success-glow { 
+                box-shadow: none; 
+                border: 2px solid;
+            }
+            .warning-glow { border-color: #fbbf24; }
+            .success-glow { border-color: #10b981; }
+            
+            /* Adjust button sizes */
+            button { 
+                padding: 0.5rem 1rem; 
+                font-size: 0.875rem; 
+                width: 100%;
+            }
+            
+            /* Hide less critical info on mobile */
+            .mobile-hide { display: none; }
+            
+            /* Make tables scrollable */
+            .overflow-x-auto { 
+                overflow-x: auto; 
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+        
+        /* Ensure all content fits on small screens */
+        @media (max-width: 480px) {
+            .text-3xl { font-size: 1.25rem !important; }
+            .p-6 { padding: 1rem !important; }
+            .p-4 { padding: 0.75rem !important; }
+            .p-3 { padding: 0.5rem !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Header -->
+    <header class="gradient-pharma shadow-lg">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-pills text-3xl"></i>
+                    <div>
+                        <h1 class="text-2xl font-bold">Pharmaceutical Manufacturing Control System</h1>
+                        <p class="text-sm opacity-90">FDA 21 CFR Part 11 Compliant | GMP Validated | Zero-Downtime Operations</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <div class="text-center">
+                        <p class="text-xs opacity-75">Batch Efficiency</p>
+                        <p class="text-xl font-bold">98.7%</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-xs opacity-75">Quality Score</p>
+                        <p class="text-xl font-bold">99.2%</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-xs opacity-75">FDA Compliance</p>
+                        <p class="text-xl font-bold text-green-300">VALID</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Alert Banner -->
+    <div id="alertBanner" class="hidden bg-yellow-600 text-black px-4 py-2 text-center font-bold">
+        <i class="fas fa-exclamation-triangle mr-2"></i>
+        <span id="alertText">System Alert</span>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-6">
+        <!-- Production Line Status -->
+        <div class="glass-card rounded-lg p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4 flex items-center">
+                <i class="fas fa-industry mr-2"></i>
+                Production Lines Status
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-gray-800 rounded-lg p-4 success-glow">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm text-gray-400">Line A - Tablets</p>
+                            <p class="text-2xl font-bold text-green-400">RUNNING</p>
+                            <p class="text-sm mt-1">Batch: #2024-0847</p>
+                            <p class="text-xs text-gray-400">Output: 12,450 units/hr</p>
+                        </div>
+                        <i class="fas fa-check-circle text-green-400 text-2xl pulse-animation"></i>
+                    </div>
+                    <div class="mt-2 w-full bg-gray-700 rounded-full h-2">
+                        <div class="bg-green-500 h-2 rounded-full" style="width: 87%"></div>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-800 rounded-lg p-4 success-glow">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm text-gray-400">Line B - Capsules</p>
+                            <p class="text-2xl font-bold text-green-400">RUNNING</p>
+                            <p class="text-sm mt-1">Batch: #2024-0848</p>
+                            <p class="text-xs text-gray-400">Output: 8,200 units/hr</p>
+                        </div>
+                        <i class="fas fa-check-circle text-green-400 text-2xl pulse-animation"></i>
+                    </div>
+                    <div class="mt-2 w-full bg-gray-700 rounded-full h-2">
+                        <div class="bg-green-500 h-2 rounded-full" style="width: 72%"></div>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm text-gray-400">Line C - Liquids</p>
+                            <p class="text-2xl font-bold text-yellow-400">CLEANING</p>
+                            <p class="text-sm mt-1">Next: #2024-0849</p>
+                            <p class="text-xs text-gray-400">Resume: 14:30</p>
+                        </div>
+                        <i class="fas fa-broom text-yellow-400 text-2xl"></i>
+                    </div>
+                    <div class="mt-2 w-full bg-gray-700 rounded-full h-2">
+                        <div class="bg-yellow-500 h-2 rounded-full" style="width: 45%"></div>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm text-gray-400">Line D - Packaging</p>
+                            <p class="text-2xl font-bold text-blue-400">STANDBY</p>
+                            <p class="text-sm mt-1">Ready for: #2024-0850</p>
+                            <p class="text-xs text-gray-400">Awaiting QC approval</p>
+                        </div>
+                        <i class="fas fa-pause-circle text-blue-400 text-2xl"></i>
+                    </div>
+                    <div class="mt-2 w-full bg-gray-700 rounded-full h-2">
+                        <div class="bg-blue-500 h-2 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Environmental Monitoring & Quality Metrics -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <!-- Clean Room Environmental Monitoring -->
+            <div class="lg:col-span-2 bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-bold mb-4 flex items-center">
+                    <i class="fas fa-temperature-low mr-2"></i>
+                    Clean Room Environmental Monitoring
+                </h2>
+                <div class="grid grid-cols-3 gap-4 mb-4">
+                    <div class="bg-gray-700 rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-gray-400">Temperature</span>
+                            <i class="fas fa-thermometer-half text-blue-400"></i>
+                        </div>
+                        <p class="text-2xl font-bold">21.3°C</p>
+                        <p class="text-xs text-green-400">Within range (20-22°C)</p>
+                    </div>
+                    <div class="bg-gray-700 rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-gray-400">Humidity</span>
+                            <i class="fas fa-tint text-blue-400"></i>
+                        </div>
+                        <p class="text-2xl font-bold">45.2%</p>
+                        <p class="text-xs text-green-400">Within range (40-60%)</p>
+                    </div>
+                    <div class="bg-gray-700 rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-gray-400">Pressure</span>
+                            <i class="fas fa-wind text-blue-400"></i>
+                        </div>
+                        <p class="text-2xl font-bold">+25 Pa</p>
+                        <p class="text-xs text-green-400">Positive pressure OK</p>
+                    </div>
+                </div>
+                <canvas id="environmentChart" height="80"></canvas>
+            </div>
+
+            <!-- Quality Control Metrics -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-bold mb-4 flex items-center">
+                    <i class="fas fa-microscope mr-2"></i>
+                    Quality Control
+                </h2>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm">Particle Count</span>
+                            <span class="text-sm text-green-400">ISO 7</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div class="bg-green-500 h-2 rounded-full" style="width: 92%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm">Microbial</span>
+                            <span class="text-sm text-green-400">0 CFU</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div class="bg-green-500 h-2 rounded-full" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm">Endotoxin</span>
+                            <span class="text-sm text-green-400"><0.25 EU/ml</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div class="bg-green-500 h-2 rounded-full" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div class="mt-4 p-3 bg-green-900 rounded-lg">
+                        <p class="text-sm font-bold text-green-400">✓ All Parameters Within Limits</p>
+                        <p class="text-xs text-gray-300 mt-1">Last QC: 5 minutes ago</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Batch Information & Compliance -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <!-- Current Batch Information -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-bold mb-4 flex items-center">
+                    <i class="fas fa-clipboard-list mr-2"></i>
+                    Current Batch Information
+                </h2>
+                <div class="space-y-3">
+                    <div class="flex justify-between p-3 bg-gray-700 rounded">
+                        <span class="text-gray-400">Batch ID</span>
+                        <span class="font-mono font-bold">#2024-0847-A1</span>
+                    </div>
+                    <div class="flex justify-between p-3 bg-gray-700 rounded">
+                        <span class="text-gray-400">Product</span>
+                        <span>Aspirin 100mg Tablets</span>
+                    </div>
+                    <div class="flex justify-between p-3 bg-gray-700 rounded">
+                        <span class="text-gray-400">Target Quantity</span>
+                        <span>50,000 units</span>
+                    </div>
+                    <div class="flex justify-between p-3 bg-gray-700 rounded">
+                        <span class="text-gray-400">Current Output</span>
+                        <span class="text-green-400 font-bold">43,575 units</span>
+                    </div>
+                    <div class="flex justify-between p-3 bg-gray-700 rounded">
+                        <span class="text-gray-400">Yield</span>
+                        <span class="text-green-400 font-bold">98.3%</span>
+                    </div>
+                    <div class="flex justify-between p-3 bg-gray-700 rounded">
+                        <span class="text-gray-400">Est. Completion</span>
+                        <span>14:45 (32 min)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FDA Compliance Dashboard -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-bold mb-4 flex items-center">
+                    <i class="fas fa-shield-alt mr-2"></i>
+                    FDA 21 CFR Part 11 Compliance
+                </h2>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="text-center p-3 bg-green-900 rounded-lg">
+                        <i class="fas fa-signature text-3xl text-green-400 mb-2"></i>
+                        <p class="text-sm font-bold">E-Signatures</p>
+                        <p class="text-xs text-gray-300">Active</p>
+                    </div>
+                    <div class="text-center p-3 bg-green-900 rounded-lg">
+                        <i class="fas fa-history text-3xl text-green-400 mb-2"></i>
+                        <p class="text-sm font-bold">Audit Trail</p>
+                        <p class="text-xs text-gray-300">Recording</p>
+                    </div>
+                    <div class="text-center p-3 bg-green-900 rounded-lg">
+                        <i class="fas fa-lock text-3xl text-green-400 mb-2"></i>
+                        <p class="text-sm font-bold">Access Control</p>
+                        <p class="text-xs text-gray-300">Enforced</p>
+                    </div>
+                    <div class="text-center p-3 bg-green-900 rounded-lg">
+                        <i class="fas fa-database text-3xl text-green-400 mb-2"></i>
+                        <p class="text-sm font-bold">Data Integrity</p>
+                        <p class="text-xs text-gray-300">Validated</p>
+                    </div>
+                </div>
+                <div class="p-3 bg-blue-900 rounded-lg mb-3">
+                    <p class="text-sm flex items-center">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                        Last FDA Audit: Passed (Score: 98/100)
+                    </p>
+                    <p class="text-xs text-gray-300 mt-1">Next audit scheduled: Q2 2025</p>
+                </div>
+                <a href="fda-compliance-demo.html" class="block w-full bg-green-600 text-center px-4 py-2 rounded hover:bg-green-700 transition-colors">
+                    <i class="fas fa-external-link-alt mr-2"></i>
+                    View Full FDA Compliance Portal
+                </a>
+            </div>
+        </div>
+
+        <!-- Real-time Batch Tracking -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4 flex items-center">
+                <i class="fas fa-chart-line mr-2"></i>
+                Real-time Production Metrics
+            </h2>
+            <canvas id="productionChart" height="60"></canvas>
+        </div>
+
+        <!-- Deviation & Alert Management -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Active Deviations -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-bold mb-4 flex items-center">
+                    <i class="fas fa-exclamation-triangle mr-2 text-yellow-400"></i>
+                    Deviation Management
+                </h2>
+                <div class="space-y-3">
+                    <div class="p-3 bg-yellow-900 rounded-lg">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-bold text-yellow-400">DEV-2024-0012</p>
+                                <p class="text-sm">Temperature spike in Clean Room 2</p>
+                                <p class="text-xs text-gray-400 mt-1">Occurred: 13:45 | Duration: 3 min</p>
+                            </div>
+                            <span class="px-2 py-1 bg-yellow-600 text-xs rounded">UNDER REVIEW</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-green-900 rounded-lg">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-bold text-green-400">DEV-2024-0011</p>
+                                <p class="text-sm">Minor pressure fluctuation</p>
+                                <p class="text-xs text-gray-400 mt-1">Resolved: 11:30 | CAPA completed</p>
+                            </div>
+                            <span class="px-2 py-1 bg-green-600 text-xs rounded">CLOSED</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SOP & Documentation -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-bold mb-4 flex items-center">
+                    <i class="fas fa-book-medical mr-2"></i>
+                    SOP & Documentation
+                </h2>
+                <div class="space-y-2">
+                    <button class="w-full text-left p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+                        <i class="fas fa-file-pdf text-red-400 mr-2"></i>
+                        SOP-MFG-001: Tablet Manufacturing
+                    </button>
+                    <button class="w-full text-left p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+                        <i class="fas fa-file-pdf text-red-400 mr-2"></i>
+                        SOP-QC-002: Quality Control Procedures
+                    </button>
+                    <button class="w-full text-left p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+                        <i class="fas fa-file-pdf text-red-400 mr-2"></i>
+                        SOP-CLN-003: Clean Room Protocol
+                    </button>
+                    <button class="w-full text-left p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+                        <i class="fas fa-file-excel text-green-400 mr-2"></i>
+                        Batch Record Template v2.3
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-12 py-6 border-t border-gray-700">
+        <div class="container mx-auto px-4 text-center text-gray-400">
+            <p>Pharmaceutical Manufacturing Control System | FDA 21 CFR Part 11 Compliant | GMP Validated</p>
+            <div class="mt-2 flex justify-center space-x-6">
+                <a href="http://localhost:8090/api/docs" class="hover:text-white transition-colors">
+                    <i class="fas fa-book mr-1"></i> API Documentation
+                </a>
+                <a href="http://localhost:3000" class="hover:text-white transition-colors">
+                    <i class="fas fa-chart-bar mr-1"></i> Grafana Metrics
+                </a>
+                <a href="index.html" class="hover:text-white transition-colors">
+                    <i class="fas fa-chart-line mr-1"></i> Trading Dashboard
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="pharma-dashboard.js"></script>
+</body>
+</html>
