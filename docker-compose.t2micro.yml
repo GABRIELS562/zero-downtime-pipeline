@@ -1,0 +1,151 @@
+version: '3.8'
+
+# Optimized for t2.micro (1GB RAM, 1 vCPU)
+# This configuration runs minimal services with strict resource limits
+
+services:
+  # Nginx - Static Frontend & Reverse Proxy (50MB RAM)
+  frontend:
+    image: nginx:alpine
+    container_name: frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx-t2micro.conf:/etc/nginx/nginx.conf:ro
+    deploy:
+      resources:
+        limits:
+          memory: 50M
+          cpus: '0.1'
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Finance Trading App (300MB RAM) - Runs on port 8080
+  finance-trading:
+    build:
+      context: ./apps/finance-trading
+      dockerfile: Dockerfile
+      target: production
+    container_name: finance-app
+    ports:
+      - "8080:8080"
+    environment:
+      - ENVIRONMENT=demo
+      - DATABASE_URL=sqlite:///app/data/trading.db
+      - WORKERS=1
+      - LOG_LEVEL=INFO
+      - MAX_CONNECTIONS=5
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - finance_data:/app/data
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+          cpus: '0.4'
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles: ["finance"]
+
+  # Pharma Manufacturing App (300MB RAM) - Runs on port 8090
+  pharma-manufacturing:
+    build:
+      context: ./apps/pharma-manufacturing
+      dockerfile: Dockerfile
+      target: production
+    container_name: pharma-app
+    ports:
+      - "8090:8080"
+    environment:
+      - ENVIRONMENT=demo
+      - DATABASE_URL=sqlite:///app/data/pharma.db
+      - WORKERS=1
+      - LOG_LEVEL=INFO
+      - MAX_CONNECTIONS=5
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - pharma_data:/app/data
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+          cpus: '0.4'
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles: ["pharma"]
+
+  # Minimal Prometheus (150MB RAM) - Metrics collection
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--storage.tsdb.retention.size=500MB'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus-t2micro.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 150M
+          cpus: '0.2'
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+  # System Monitor - Track resource usage
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.rootfs=/host'
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/pods/.+)($|/)'
+    volumes:
+      - /:/host:ro,rslave
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    deploy:
+      resources:
+        limits:
+          memory: 30M
+          cpus: '0.1'
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+volumes:
+  finance_data:
+    driver: local
+  pharma_data:
+    driver: local
+  prometheus_data:
+    driver: local
+    driver_opts:
+      o: "size=500m"
+
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-zero-downtime

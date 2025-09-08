@@ -1,0 +1,47 @@
+# Minimal Prometheus configuration for t2.micro
+global:
+  scrape_interval: 60s      # Reduced frequency to save resources
+  evaluation_interval: 60s
+  scrape_timeout: 10s
+  
+  # Resource limits
+  external_labels:
+    environment: 't2micro-demo'
+    instance_type: 't2.micro'
+
+# Simple alerting rules
+alerting:
+  alertmanagers: []  # Disabled to save memory
+
+# Recording rules
+rule_files: []  # Disabled to save memory
+
+# Scrape configurations - minimal targets
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 120s  # Less frequent self-monitoring
+
+  # Node exporter for system metrics
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 60s
+
+  # Finance app (when running)
+  - job_name: 'finance-trading'
+    static_configs:
+      - targets: ['finance-app:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 60s
+    scrape_timeout: 5s
+
+  # Pharma app (when running)  
+  - job_name: 'pharma-manufacturing'
+    static_configs:
+      - targets: ['pharma-app:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 60s
+    scrape_timeout: 5s
