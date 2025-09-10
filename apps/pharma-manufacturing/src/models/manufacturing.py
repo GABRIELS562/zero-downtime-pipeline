@@ -415,4 +415,4 @@ class Alert(Base):
     resolved_at = Column(DateTime(timezone=True))
     
     # Additional data
-    metadata = Column(JSONB)
+    batch_metadata = Column(JSONB)

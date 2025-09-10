@@ -13,24 +13,24 @@ import sys
 from datetime import datetime
 
 # Import API routers
-from api.batch_tracking import router as batch_router
-from api.equipment_monitoring import router as equipment_router
-from api.inventory_management import router as inventory_router
-from api.quality_control import router as quality_router
-from api.manufacturing_workflow import router as workflow_router
-from api.environmental_monitoring import router as environmental_router
-from api.health import router as health_router
-from api.alerts import router as alerts_router
+from src.api.batch_tracking import router as batch_router
+from src.api.equipment_monitoring import router as equipment_router
+from src.api.inventory_management import router as inventory_router
+from src.api.quality_control import router as quality_router
+from src.api.manufacturing_workflow import router as workflow_router
+from src.api.environmental_monitoring import router as environmental_router
+from src.api.health import router as health_router
+from src.api.alerts import router as alerts_router
 
 # Import middleware
-from middleware.gmp_compliance_logger import GMPComplianceMiddleware
-from middleware.fda_validation import FDAValidationMiddleware
-from middleware.audit_trail import AuditTrailMiddleware
+from src.middleware.gmp_compliance_logger import GMPComplianceMiddleware
+from src.middleware.fda_validation import FDAValidationMiddleware
+from src.middleware.audit_trail import AuditTrailMiddleware
 
 # Import services
-from services.database_manager import DatabaseManager
-from services.alert_manager import AlertManager
-from services.equipment_simulator import EquipmentSimulator
+from src.services.database_manager import DatabaseManager
+from src.services.alert_manager import AlertManager
+from src.services.equipment_simulator import EquipmentSimulator
 
 # Configure logging
 logging.basicConfig(

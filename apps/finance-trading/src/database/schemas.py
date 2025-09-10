@@ -9,8 +9,7 @@ from typing import Optional, List, Dict, Any
 from uuid import UUID
 from enum import Enum
 
-from pydantic import BaseModel, Field, validator, ConfigDict
-from pydantic.types import EmailStr, SecretStr
+from pydantic import BaseModel, Field, validator, ConfigDict, EmailStr, SecretStr
 
 
 # Enum schemas
