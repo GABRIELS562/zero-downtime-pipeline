@@ -1,0 +1,24 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Set PYTHONPATH first
+ENV PYTHONPATH=/app
+
+# Install only essential dependencies
+RUN pip install fastapi uvicorn pydantic==1.10.13 sqlalchemy psycopg2-binary redis prometheus-client
+
+# Copy application code
+COPY src src/
+
+# Create a minimal test script
+RUN echo "from src.main import app; print('Import successful')" > test_import.py
+
+# Test the import during build
+RUN python test_import.py || echo "Import test failed"
+
+# Expose port
+EXPOSE 8000
+
+# Run with explicit module path
+CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
