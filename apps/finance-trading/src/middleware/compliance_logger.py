@@ -14,7 +14,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
-from ..services.sox_compliance import SOXComplianceService, EventType
+from src.services.sox_compliance import SOXComplianceService, EventType
 
 logger = logging.getLogger(__name__)
 

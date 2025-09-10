@@ -13,7 +13,7 @@ import logging
 from dataclasses import dataclass
 
 from prometheus_client import Counter, Histogram, Gauge
-from ..models.trading import Order, OrderSide, OrderType, OrderStatus, TimeInForce
+from src.models.trading import Order, OrderSide, OrderType, OrderStatus, TimeInForce
 
 logger = logging.getLogger(__name__)
 

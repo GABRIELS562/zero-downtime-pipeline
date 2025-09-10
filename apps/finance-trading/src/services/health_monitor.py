@@ -15,9 +15,9 @@ import psutil
 import logging
 
 from prometheus_client import Counter, Histogram, Gauge, Summary
-from ..services.market_data_service import MarketDataService
-from ..services.order_processor import OrderProcessor
-from ..services.sox_compliance import SOXComplianceService
+from src.services.market_data_service import MarketDataService
+from src.services.order_processor import OrderProcessor
+from src.services.sox_compliance import SOXComplianceService
 
 logger = logging.getLogger(__name__)
 

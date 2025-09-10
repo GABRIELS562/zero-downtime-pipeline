@@ -16,7 +16,7 @@ import statistics
 import math
 
 from prometheus_client import Counter, Histogram, Gauge
-from ..services.sox_compliance import SOXComplianceService, EventType
+from src.services.sox_compliance import SOXComplianceService, EventType
 
 logger = logging.getLogger(__name__)
 

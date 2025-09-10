@@ -15,8 +15,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 import logging
 
-from ..services.sox_compliance import SOXComplianceService, EventType, ComplianceStatus
-from ..services.risk_manager import RiskManager, RiskLevel, FraudPattern
+from src.services.sox_compliance import SOXComplianceService, EventType, ComplianceStatus
+from src.services.risk_manager import RiskManager, RiskLevel, FraudPattern
 
 logger = logging.getLogger(__name__)
 
