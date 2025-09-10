@@ -6,7 +6,7 @@ Comprehensive audit trail and compliance logging for pharmaceutical manufacturin
 import time
 import json
 import hashlib
-from typing import Callable, Dict, Any, Optional
+from typing import Callable, Dict, Any, Optional, List
 from datetime import datetime, timezone
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware

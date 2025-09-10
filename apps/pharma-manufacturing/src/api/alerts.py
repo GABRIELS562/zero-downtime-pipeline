@@ -10,8 +10,8 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from src.models.manufacturing import Alert, AlertSeverity
-from src.services.alert_manager import AlertManager
-from src.services.alert_manager import AlertManager
+from src.services.alert_manager import AlertManager as AlertService
+from src.services.alert_manager import AlertManager as NotificationService
 
 router = APIRouter()
 

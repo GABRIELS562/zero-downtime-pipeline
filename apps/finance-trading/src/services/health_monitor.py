@@ -14,31 +14,17 @@ from enum import Enum
 import psutil
 import logging
 
-from prometheus_client import Counter, Histogram, Gauge, Summary
 from src.services.market_data_service import MarketDataService
 from src.services.order_processor import OrderProcessor
 from src.services.sox_compliance import SOXComplianceService
+from src.services.metrics_singleton import (
+    health_check_duration, health_check_success, health_check_failures,
+    trading_volume_gauge, revenue_gauge, order_success_rate, portfolio_accuracy,
+    market_data_latency, risk_exposure, cpu_usage, memory_usage,
+    response_time_p95, response_time_p99
+)
 
 logger = logging.getLogger(__name__)
-
-# Prometheus metrics for health monitoring
-health_check_duration = Histogram('health_check_duration_seconds', 'Health check duration', ['check_type'])
-health_check_success = Counter('health_check_success_total', 'Successful health checks', ['check_type'])
-health_check_failures = Counter('health_check_failure_total', 'Failed health checks', ['check_type'])
-
-# Business metrics
-trading_volume_gauge = Gauge('trading_volume_current', 'Current trading volume')
-revenue_gauge = Gauge('revenue_current', 'Current revenue')
-order_success_rate = Gauge('order_success_rate', 'Order success rate percentage')
-portfolio_accuracy = Gauge('portfolio_accuracy', 'Portfolio calculation accuracy')
-market_data_latency = Histogram('market_data_latency_seconds', 'Market data feed latency')
-risk_exposure = Gauge('risk_exposure_current', 'Current risk exposure')
-
-# System metrics
-cpu_usage = Gauge('cpu_usage_percent', 'CPU usage percentage')
-memory_usage = Gauge('memory_usage_percent', 'Memory usage percentage')
-response_time_p95 = Gauge('response_time_p95_ms', '95th percentile response time')
-response_time_p99 = Gauge('response_time_p99_ms', '99th percentile response time')
 
 class HealthStatus(str, Enum):
     """Health status enumeration"""

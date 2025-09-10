@@ -18,7 +18,6 @@ from enum import Enum
 import logging
 
 from cryptography.fernet import Fernet
-from prometheus_client import Counter, Histogram, Gauge
 from sqlalchemy import Column, String, DateTime, Text, Boolean, Numeric, Integer, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, JSONB
 from sqlalchemy.ext.declarative import declarative_base
@@ -26,12 +25,26 @@ from sqlalchemy.orm import relationship
 
 logger = logging.getLogger(__name__)
 
-# Prometheus metrics for compliance monitoring
-sox_audit_entries = Counter('sox_audit_entries_total', 'Total SOX audit entries created', ['event_type'])
-sox_integrity_checks = Counter('sox_integrity_checks_total', 'SOX data integrity checks', ['status'])
-sox_violations = Counter('sox_violations_total', 'SOX compliance violations detected', ['violation_type'])
-sox_audit_latency = Histogram('sox_audit_latency_seconds', 'SOX audit logging latency')
-sox_data_retention = Gauge('sox_data_retention_days', 'SOX data retention period in days')
+# Import metrics from singleton to avoid duplicates
+try:
+    from src.services.metrics_singleton import metrics
+    sox_audit_entries = metrics.get_metric('sox_audit_entries')
+    sox_integrity_checks = metrics.get_metric('sox_integrity_checks')
+    sox_violations = metrics.get_metric('sox_violations')
+    sox_audit_latency = metrics.get_metric('sox_audit_latency')
+    sox_data_retention = metrics.get_metric('sox_data_retention')
+except (ImportError, AttributeError):
+    # Fallback if metrics singleton isn't available
+    from prometheus_client import Counter, Histogram, Gauge
+    try:
+        sox_audit_entries = Counter('sox_audit_entries_total', 'Total SOX audit entries created', ['event_type'])
+        sox_integrity_checks = Counter('sox_integrity_checks_total', 'SOX data integrity checks', ['status'])
+        sox_violations = Counter('sox_violations_total', 'SOX compliance violations detected', ['violation_type'])
+        sox_audit_latency = Histogram('sox_audit_latency_seconds', 'SOX audit logging latency')
+        sox_data_retention = Gauge('sox_data_retention_days', 'SOX data retention period in days')
+    except ValueError:
+        # Metrics already registered
+        pass
 
 Base = declarative_base()
 
@@ -183,7 +196,8 @@ class SOXComplianceService:
         
         # SOX requirements
         self.data_retention_years = 7
-        self.sox_data_retention.set(self.data_retention_years * 365)
+        if sox_data_retention:
+            sox_data_retention.set(self.data_retention_years * 365)
         
         # Compliance thresholds
         self.risk_thresholds = {

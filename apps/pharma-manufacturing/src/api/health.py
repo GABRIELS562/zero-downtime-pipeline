@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel
 
 from src.services.database_manager import DatabaseManager
-from src.services.database_manager import DatabaseManager
+from src.services.health_service import HealthService
 
 router = APIRouter()
 

@@ -11,39 +11,13 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, REGISTRY
-from prometheus_client import Counter, Histogram, Gauge, Info
 from fastapi.responses import Response
 import logging
+from src.services.metrics_singleton import business_metrics, system_info
 
 logger = logging.getLogger(__name__)
 
 metrics_router = APIRouter()
-
-# Custom Prometheus metrics for business monitoring
-business_metrics = {
-    'trading_volume_24h': Gauge('trading_volume_24h_usd', 'Trading volume in last 24 hours (USD)'),
-    'revenue_24h': Gauge('revenue_24h_usd', 'Revenue in last 24 hours (USD)'),
-    'active_traders': Gauge('active_traders_count', 'Number of active traders'),
-    'order_success_rate': Gauge('order_success_rate_percent', 'Order success rate percentage'),
-    'avg_order_latency': Gauge('avg_order_latency_ms', 'Average order processing latency (ms)'),
-    'compliance_score': Gauge('compliance_score_percent', 'SOX compliance score percentage'),
-    'risk_score': Gauge('risk_score_normalized', 'Normalized risk score (0-1)'),
-    'fraud_alerts': Counter('fraud_alerts_total', 'Total fraud alerts generated'),
-    'audit_events': Counter('audit_events_total', 'Total audit events logged'),
-    'position_value': Gauge('position_value_usd', 'Total position value (USD)'),
-    'pnl_realized': Gauge('pnl_realized_usd', 'Realized P&L (USD)'),
-    'pnl_unrealized': Gauge('pnl_unrealized_usd', 'Unrealized P&L (USD)')
-}
-
-# System info metrics
-system_info = Info('trading_system_info', 'Trading system information')
-system_info.info({
-    'version': '1.0.0',
-    'build_id': 'dev-local',
-    'environment': 'development',
-    'compliance_level': 'SOX',
-    'deployment_type': 'zero_downtime'
-})
 
 class BusinessMetricsResponse(BaseModel):
     """Business metrics response model"""
