@@ -14,8 +14,8 @@ from alembic.script import ScriptDirectory
 from alembic.runtime.migration import MigrationContext
 from alembic.runtime.environment import EnvironmentContext
 
-from .models import Base
-from .connection import get_database_url
+from src.database.models import Base
+from src.database.connection import get_database_url
 
 # Alembic Config object
 config = context.config

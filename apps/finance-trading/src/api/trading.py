@@ -72,7 +72,7 @@ def get_risk_manager() -> RiskManager:
     """Get risk manager instance"""
     global risk_manager
     if risk_manager is None:
-        from ..services.risk_manager import RiskManager
+        from src.services.risk_manager import RiskManager
         risk_manager = RiskManager()
     return risk_manager
 
