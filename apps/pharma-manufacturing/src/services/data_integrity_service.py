@@ -12,8 +12,8 @@ from typing import Dict, Any, Optional, List
 from uuid import UUID, uuid4
 import logging
 
-from models.fda_compliance import AuditAction
-from services.immutable_audit_service import ImmutableAuditService
+from src.models.fda_compliance import AuditAction
+from src.services.immutable_audit_service import ImmutableAuditService
 
 logger = logging.getLogger(__name__)
 

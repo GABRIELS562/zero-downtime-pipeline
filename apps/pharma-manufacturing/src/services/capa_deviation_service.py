@@ -9,11 +9,11 @@ from typing import Dict, Any, Optional, List
 from uuid import UUID, uuid4
 import logging
 
-from models.fda_compliance import (
+from src.models.fda_compliance import (
     CAPARecord, Deviation, AuditAction
 )
-from services.immutable_audit_service import ImmutableAuditService
-from services.electronic_signature_service import ElectronicSignatureService
+from src.services.immutable_audit_service import ImmutableAuditService
+from src.services.electronic_signature_service import ElectronicSignatureService
 
 logger = logging.getLogger(__name__)
 

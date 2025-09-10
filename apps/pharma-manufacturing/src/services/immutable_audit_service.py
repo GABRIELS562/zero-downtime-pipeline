@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import base64
 
-from models.fda_compliance import AuditLog, AuditAction
+from src.models.fda_compliance import AuditLog, AuditAction
 
 logger = logging.getLogger(__name__)
 

@@ -16,9 +16,9 @@ import pyotp
 from passlib.context import CryptContext
 from passlib.hash import pbkdf2_sha256
 
-from models.fda_compliance import FDAUser, UserRole, UserRole as UserRoleEnum
-from services.immutable_audit_service import ImmutableAuditService
-from models.fda_compliance import AuditAction
+from src.models.fda_compliance import FDAUser, UserRole, UserRole as UserRoleEnum
+from src.services.immutable_audit_service import ImmutableAuditService
+from src.models.fda_compliance import AuditAction
 
 logger = logging.getLogger(__name__)
 

@@ -18,11 +18,11 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.x509 import load_pem_x509_certificate
 import jwt
 
-from models.fda_compliance import (
+from src.models.fda_compliance import (
     ElectronicSignature, SignatureType, SignatureIntent,
     FDAUser, DocumentType
 )
-from services.audit_service import AuditService
+from src.services.audit_service import AuditService
 
 logger = logging.getLogger(__name__)
 

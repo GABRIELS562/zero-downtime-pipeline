@@ -9,9 +9,9 @@ from datetime import datetime, timedelta
 from uuid import UUID
 from pydantic import BaseModel, Field
 
-from models.manufacturing import RawMaterial, MaterialLot, MaterialUsage
-from services.inventory_service import InventoryService
-from services.audit_service import AuditService
+from src.models.manufacturing import RawMaterial, MaterialLot, MaterialUsage
+from src.services.inventory_service import InventoryService
+from src.services.audit_service import AuditService
 
 router = APIRouter()
 

@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from uuid import UUID
 from pydantic import BaseModel, Field
 
-from services.manufacturing_health_service import ManufacturingHealthService
+from src.services.manufacturing_health_service import ManufacturingHealthService
 
 router = APIRouter()
 

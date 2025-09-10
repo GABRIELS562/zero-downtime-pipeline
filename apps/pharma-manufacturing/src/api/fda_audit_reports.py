@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from uuid import UUID
 from pydantic import BaseModel, Field
 
-from services.fda_audit_report_service import FDAAuditReportService
+from src.services.fda_audit_report_service import FDAAuditReportService
 
 router = APIRouter()
 

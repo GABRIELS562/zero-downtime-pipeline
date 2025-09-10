@@ -9,7 +9,7 @@ from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, Field
 
-from services.immutable_audit_service import ImmutableAuditService
+from src.services.immutable_audit_service import ImmutableAuditService
 
 router = APIRouter()
 

@@ -8,8 +8,8 @@ from typing import Dict, Any
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 
-from services.health_service import HealthService
-from services.database_manager import DatabaseManager
+from src.services.health_service import HealthService
+from src.services.database_manager import DatabaseManager
 
 router = APIRouter()
 

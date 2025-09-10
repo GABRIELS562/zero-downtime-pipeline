@@ -9,9 +9,9 @@ from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, Field
 
-from services.electronic_batch_record_service import ElectronicBatchRecordService
-from services.electronic_signature_service import ElectronicSignatureService
-from services.immutable_audit_service import ImmutableAuditService
+from src.services.electronic_batch_record_service import ElectronicBatchRecordService
+from src.services.electronic_signature_service import ElectronicSignatureService
+from src.services.immutable_audit_service import ImmutableAuditService
 
 router = APIRouter()
 

@@ -9,9 +9,9 @@ from typing import Dict, Any, Optional, List
 from uuid import UUID, uuid4
 import logging
 
-from models.gmp_models import InProcessTesting, TestStatus
-from services.immutable_audit_service import ImmutableAuditService
-from models.fda_compliance import AuditAction
+from src.models.gmp_models import InProcessTesting, TestStatus
+from src.services.immutable_audit_service import ImmutableAuditService
+from src.models.fda_compliance import AuditAction
 
 logger = logging.getLogger(__name__)
 

@@ -10,15 +10,15 @@ from typing import Dict, Any, Optional, List
 from uuid import UUID, uuid4
 import logging
 
-from services.immutable_audit_service import ImmutableAuditService
-from services.electronic_signature_service import ElectronicSignatureService
-from services.fda_user_management_service import FDAUserManagementService
-from services.document_control_service import DocumentControlService
-from services.electronic_batch_record_service import ElectronicBatchRecordService
-from services.capa_deviation_service import CAPADeviationService
-from services.manufacturing_event_service import ManufacturingEventService
-from services.data_integrity_service import DataIntegrityService
-from models.fda_compliance import AuditAction
+from src.services.immutable_audit_service import ImmutableAuditService
+from src.services.electronic_signature_service import ElectronicSignatureService
+from src.services.fda_user_management_service import FDAUserManagementService
+from src.services.document_control_service import DocumentControlService
+from src.services.electronic_batch_record_service import ElectronicBatchRecordService
+from src.services.capa_deviation_service import CAPADeviationService
+from src.services.manufacturing_event_service import ManufacturingEventService
+from src.services.data_integrity_service import DataIntegrityService
+from src.models.fda_compliance import AuditAction
 
 logger = logging.getLogger(__name__)
 

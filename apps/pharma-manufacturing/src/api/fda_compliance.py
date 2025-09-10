@@ -9,13 +9,13 @@ from datetime import datetime, timedelta
 from uuid import UUID
 from pydantic import BaseModel, Field
 
-from models.fda_compliance import (
+from src.models.fda_compliance import (
     ElectronicSignature, SignatureType, SignatureIntent, DocumentType,
     FDAUser, UserRole as UserRoleEnum, AuditAction
 )
-from services.electronic_signature_service import ElectronicSignatureService
-from services.immutable_audit_service import ImmutableAuditService
-from services.fda_user_management_service import FDAUserManagementService
+from src.services.electronic_signature_service import ElectronicSignatureService
+from src.services.immutable_audit_service import ImmutableAuditService
+from src.services.fda_user_management_service import FDAUserManagementService
 
 router = APIRouter()
 

@@ -9,9 +9,9 @@ from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, Field
 
-from models.manufacturing import BatchWorkflowStage, WorkflowStage
-from services.workflow_service import WorkflowService
-from services.audit_service import AuditService
+from src.models.manufacturing import BatchWorkflowStage, WorkflowStage
+from src.services.workflow_service import WorkflowService
+from src.services.audit_service import AuditService
 
 router = APIRouter()
 

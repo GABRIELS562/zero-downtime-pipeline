@@ -9,9 +9,9 @@ from datetime import datetime, timedelta
 from uuid import UUID
 from pydantic import BaseModel, Field
 
-from models.manufacturing import EnvironmentalReading
-from services.environmental_service import EnvironmentalService
-from services.alert_manager import AlertManager
+from src.models.manufacturing import EnvironmentalReading
+from src.services.environmental_service import EnvironmentalService
+from src.services.alert_manager import AlertManager
 
 router = APIRouter()
 

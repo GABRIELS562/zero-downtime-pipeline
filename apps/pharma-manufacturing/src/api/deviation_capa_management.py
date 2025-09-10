@@ -9,8 +9,8 @@ from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, Field
 
-from services.capa_deviation_service import CAPADeviationService
-from services.immutable_audit_service import ImmutableAuditService
+from src.services.capa_deviation_service import CAPADeviationService
+from src.services.immutable_audit_service import ImmutableAuditService
 
 router = APIRouter()
 

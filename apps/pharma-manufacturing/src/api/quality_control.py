@@ -9,10 +9,10 @@ from datetime import datetime, timedelta
 from uuid import UUID
 from pydantic import BaseModel, Field
 
-from models.manufacturing import QualityTest, QualityTestStatus
-from services.quality_service import QualityService
-from services.audit_service import AuditService
-from services.alert_manager import AlertManager
+from src.models.manufacturing import QualityTest, QualityTestStatus
+from src.services.quality_service import QualityService
+from src.services.audit_service import AuditService
+from src.services.alert_manager import AlertManager
 
 router = APIRouter()
 
