@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pharma-app
+  namespace: production
+  labels:
+    app: pharma-app
+    tier: backend
+    environment: production
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pharma-app
+  template:
+    metadata:
+      labels:
+        app: pharma-app
+        tier: backend
+        environment: production
+    spec:
+      containers:
+      - name: app
+        image: gabriels562/pharma-manufacturing:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: PORT
+          value: "8000"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health/live
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/health/ready
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pharma-app
+  namespace: production
+  labels:
+    app: pharma-app
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: pharma-app
