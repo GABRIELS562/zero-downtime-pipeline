@@ -1,0 +1,38 @@
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    docker.io \
+    procps \
+    net-tools \
+    sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install kubectl
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
+    chmod +x kubectl && \
+    mv kubectl /usr/local/bin/
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    flask \
+    psutil \
+    requests \
+    pyyaml
+
+# Create app directory
+WORKDIR /app
+
+# Copy scripts
+COPY scripts/forensic_collector.py /app/
+COPY scripts/forensic_api.py /app/
+
+# Make scripts executable
+RUN chmod +x /app/*.py
+
+# Create forensics directory
+RUN mkdir -p /var/forensics/evidence
+
+# Default command
+CMD ["python3", "/app/forensic_collector.py", "monitor"]
