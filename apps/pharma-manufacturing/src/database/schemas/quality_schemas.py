@@ -134,14 +134,14 @@ class TestPlanCreateSchema(BaseSchema, StatusSchema, ApprovalSchema):
     """Test plan creation schema"""
     plan_number: str = Field(..., min_length=1, max_length=100)
     plan_name: str = Field(..., min_length=1, max_length=200)
-    plan_version: str = Field("1.0", regex=r'^[0-9]+\.[0-9]+$')
+    plan_version: str = Field("1.0", pattern=r'^[0-9]+\.[0-9]+$')
     test_type_id: UUID4
     product_id: Optional[UUID4] = None
     material_id: Optional[UUID4] = None
     sampling_requirements: Dict[str, Any] = Field(..., description="Sampling requirements")
     test_specifications: Dict[str, Any] = Field(..., description="Test specifications")
     analytical_method: str = Field(..., min_length=1, max_length=100)
-    method_validation_status: str = Field("pending", regex=r'^(pending|in_progress|completed|failed)$')
+    method_validation_status: str = Field("pending", pattern=r'^(pending|in_progress|completed|failed)$')
     test_frequency: TestFrequencyEnum
     test_schedule: Optional[Dict[str, Any]] = None
     assigned_laboratory: str = Field(..., min_length=1, max_length=200)
@@ -169,11 +169,11 @@ class TestPlanCreateSchema(BaseSchema, StatusSchema, ApprovalSchema):
 class TestPlanUpdateSchema(BaseModel):
     """Test plan update schema"""
     plan_name: Optional[str] = Field(None, min_length=1, max_length=200)
-    plan_version: Optional[str] = Field(None, regex=r'^[0-9]+\.[0-9]+$')
+    plan_version: Optional[str] = Field(None, pattern=r'^[0-9]+\.[0-9]+$')
     sampling_requirements: Optional[Dict[str, Any]] = None
     test_specifications: Optional[Dict[str, Any]] = None
     analytical_method: Optional[str] = Field(None, min_length=1, max_length=100)
-    method_validation_status: Optional[str] = Field(None, regex=r'^(pending|in_progress|completed|failed)$')
+    method_validation_status: Optional[str] = Field(None, pattern=r'^(pending|in_progress|completed|failed)$')
     test_frequency: Optional[TestFrequencyEnum] = None
     test_schedule: Optional[Dict[str, Any]] = None
     assigned_laboratory: Optional[str] = Field(None, min_length=1, max_length=200)
@@ -292,7 +292,7 @@ class QualityTestResultCreateSchema(BaseSchema, TestResultSchema, ApprovalSchema
     sampled_by: UUID4
     sample_container: str = Field(..., min_length=1, max_length=100)
     storage_conditions: Dict[str, Any] = Field(..., description="Storage conditions")
-    sample_stability: str = Field("stable", regex=r'^(stable|unstable|degraded)$')
+    sample_stability: str = Field("stable", pattern=r'^(stable|unstable|degraded)$')
     test_request_date: datetime
     test_priority: TestPriorityEnum = TestPriorityEnum.NORMAL
     overall_result: TestResultStatusEnum
@@ -311,7 +311,7 @@ class QualityTestResultCreateSchema(BaseSchema, TestResultSchema, ApprovalSchema
 class QualityTestResultUpdateSchema(BaseModel):
     """Quality test result update schema"""
     sample_description: Optional[str] = Field(None, max_length=200)
-    sample_stability: Optional[str] = Field(None, regex=r'^(stable|unstable|degraded)$')
+    sample_stability: Optional[str] = Field(None, pattern=r'^(stable|unstable|degraded)$')
     test_priority: Optional[TestPriorityEnum] = None
     overall_result: Optional[TestResultStatusEnum] = None
     test_conclusion: Optional[str] = None

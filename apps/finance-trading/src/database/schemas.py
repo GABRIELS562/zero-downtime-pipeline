@@ -83,10 +83,10 @@ class UserBase(BaseSchema):
     email: EmailStr
     first_name: str = Field(..., min_length=1, max_length=100)
     last_name: str = Field(..., min_length=1, max_length=100)
-    phone: Optional[str] = Field(None, regex=r'^\+?1?\d{9,15}$')
+    phone: Optional[str] = Field(None, pattern=r'^\+?1?\d{9,15}$')
     date_of_birth: Optional[datetime] = None
-    risk_level: str = Field("medium", regex=r'^(low|medium|high)$')
-    kyc_status: str = Field("pending", regex=r'^(pending|verified|rejected)$')
+    risk_level: str = Field("medium", pattern=r'^(low|medium|high)$')
+    kyc_status: str = Field("pending", pattern=r'^(pending|verified|rejected)$')
     accredited_investor: bool = False
 
 class UserCreate(UserBase):
@@ -104,8 +104,8 @@ class UserUpdate(BaseSchema):
     """User update schema"""
     first_name: Optional[str] = Field(None, min_length=1, max_length=100)
     last_name: Optional[str] = Field(None, min_length=1, max_length=100)
-    phone: Optional[str] = Field(None, regex=r'^\+?1?\d{9,15}$')
-    risk_level: Optional[str] = Field(None, regex=r'^(low|medium|high)$')
+    phone: Optional[str] = Field(None, pattern=r'^\+?1?\d{9,15}$')
+    risk_level: Optional[str] = Field(None, pattern=r'^(low|medium|high)$')
 
 class UserResponse(UserBase):
     """User response schema"""
@@ -123,7 +123,7 @@ class AccountBase(BaseSchema):
     """Base account schema"""
     account_type: AccountType
     account_name: str = Field(..., min_length=1, max_length=100)
-    currency: str = Field("USD", regex=r'^[A-Z]{3}$')
+    currency: str = Field("USD", pattern=r'^[A-Z]{3}$')
     margin_enabled: bool = False
     options_enabled: bool = False
 
@@ -336,10 +336,10 @@ class TransactionBase(BaseSchema):
     """Base transaction schema"""
     transaction_type: TransactionType
     amount: Decimal = Field(..., ne=0)
-    currency: str = Field("USD", regex=r'^[A-Z]{3}$')
+    currency: str = Field("USD", pattern=r'^[A-Z]{3}$')
     description: Optional[str] = None
     reference_id: Optional[str] = Field(None, max_length=100)
-    status: str = Field("PENDING", regex=r'^(PENDING|PROCESSED|SETTLED|CANCELLED|FAILED)$')
+    status: str = Field("PENDING", pattern=r'^(PENDING|PROCESSED|SETTLED|CANCELLED|FAILED)$')
 
 class TransactionCreate(TransactionBase):
     """Transaction creation schema"""

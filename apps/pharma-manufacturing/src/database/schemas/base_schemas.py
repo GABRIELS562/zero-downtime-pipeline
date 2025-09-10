@@ -108,8 +108,8 @@ class ApprovalSchema(BaseModel):
 
 class BatchTrackingSchema(BaseModel):
     """Batch tracking mixin schema"""
-    batch_number: str = Field(..., regex=r'^[A-Z0-9]{6,20}$')
-    lot_number: str = Field(..., regex=r'^[A-Z0-9]{6,20}$')
+    batch_number: str = Field(..., pattern=r'^[A-Z0-9]{6,20}$')
+    lot_number: str = Field(..., pattern=r'^[A-Z0-9]{6,20}$')
     manufacturing_date: datetime
     expiry_date: Optional[datetime] = None
     batch_size: str
@@ -280,7 +280,7 @@ class FilterSchema(BaseModel):
 class SortSchema(BaseModel):
     """Sorting schema"""
     field: str
-    direction: str = Field("asc", regex=r'^(asc|desc)$')
+    direction: str = Field("asc", pattern=r'^(asc|desc)$')
     
     class Config:
         use_enum_values = True

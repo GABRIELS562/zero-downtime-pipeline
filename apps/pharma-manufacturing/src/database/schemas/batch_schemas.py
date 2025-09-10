@@ -43,11 +43,11 @@ class QualityStatusEnum(str, Enum):
 # Product schemas
 class ProductCreateSchema(BaseSchema):
     """Product creation schema"""
-    product_code: str = Field(..., regex=r'^[A-Z0-9]{3,50}$')
+    product_code: str = Field(..., pattern=r'^[A-Z0-9]{3,50}$')
     product_name: str = Field(..., min_length=1, max_length=200)
     product_type: ProductTypeEnum
-    nda_number: Optional[str] = Field(None, regex=r'^[0-9]{6}$')
-    anda_number: Optional[str] = Field(None, regex=r'^[0-9]{6}$')
+    nda_number: Optional[str] = Field(None, pattern=r'^[0-9]{6}$')
+    anda_number: Optional[str] = Field(None, pattern=r'^[0-9]{6}$')
     active_ingredient: str = Field(..., min_length=1, max_length=100)
     strength: str = Field(..., min_length=1, max_length=50)
     dosage_form: str = Field(..., min_length=1, max_length=50)
@@ -56,7 +56,7 @@ class ProductCreateSchema(BaseSchema):
     batch_size_units: str = Field(..., min_length=1, max_length=20)
     shelf_life_months: int = Field(..., gt=0)
     storage_conditions: Dict[str, Any] = Field(..., description="Storage conditions as JSON")
-    bom_version: str = Field("1.0", regex=r'^[0-9]+\.[0-9]+$')
+    bom_version: str = Field("1.0", pattern=r'^[0-9]+\.[0-9]+$')
     bom_data: Dict[str, Any] = Field(..., description="Bill of materials as JSON")
     
     @validator('strength')
@@ -75,8 +75,8 @@ class ProductUpdateSchema(BaseModel):
     """Product update schema"""
     product_name: Optional[str] = Field(None, min_length=1, max_length=200)
     product_type: Optional[ProductTypeEnum] = None
-    nda_number: Optional[str] = Field(None, regex=r'^[0-9]{6}$')
-    anda_number: Optional[str] = Field(None, regex=r'^[0-9]{6}$')
+    nda_number: Optional[str] = Field(None, pattern=r'^[0-9]{6}$')
+    anda_number: Optional[str] = Field(None, pattern=r'^[0-9]{6}$')
     active_ingredient: Optional[str] = Field(None, min_length=1, max_length=100)
     strength: Optional[str] = Field(None, min_length=1, max_length=50)
     dosage_form: Optional[str] = Field(None, min_length=1, max_length=50)
@@ -85,7 +85,7 @@ class ProductUpdateSchema(BaseModel):
     batch_size_units: Optional[str] = Field(None, min_length=1, max_length=20)
     shelf_life_months: Optional[int] = Field(None, gt=0)
     storage_conditions: Optional[Dict[str, Any]] = None
-    bom_version: Optional[str] = Field(None, regex=r'^[0-9]+\.[0-9]+$')
+    bom_version: Optional[str] = Field(None, pattern=r'^[0-9]+\.[0-9]+$')
     bom_data: Optional[Dict[str, Any]] = None
     
     @validator('strength')
