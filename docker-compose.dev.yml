@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # Frontend with live reload - NO REBUILD NEEDED for changes!
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro  # Mount frontend files directly
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Finance Trading Backend
+  finance-app:
+    build:
+      context: ./apps/finance-trading
+      dockerfile: Dockerfile.bulletproof
+    ports:
+      - "8080:8080"
+    environment:
+      - ENVIRONMENT=development
+      - PORT=8080
+    volumes:
+      - ./apps/finance-trading:/app:ro  # Mount for live reload (optional)
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Pharma Manufacturing Backend  
+  pharma-app:
+    build:
+      context: ./apps/pharma-manufacturing
+      dockerfile: Dockerfile.bulletproof
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - PORT=8000
+    volumes:
+      - ./apps/pharma-manufacturing:/app:ro  # Mount for live reload (optional)
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge

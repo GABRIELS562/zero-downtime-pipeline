@@ -1,9 +1,13 @@
 // Zero-Downtime Trading Dashboard
 // Real-time market data and deployment monitoring
 
-// Configuration
-const API_BASE = 'http://localhost:8080';
-const WS_URL = 'ws://localhost:8082/feed';
+// Configuration - Dynamic URLs for local and production
+const API_BASE = window.location.hostname === 'localhost' 
+    ? 'http://localhost:8080'  // Local development
+    : '/api/finance';           // Production with reverse proxy
+const WS_URL = window.location.hostname === 'localhost'
+    ? 'ws://localhost:8082/feed'  // Local development
+    : `wss://${window.location.hostname}/ws/feed`; // Production WebSocket
 // API key should be fetched from backend for security
 // In production, never expose API keys in frontend code
 const ALPHA_VANTAGE_KEY = 'DEMO_KEY'; // Replace with backend API call
