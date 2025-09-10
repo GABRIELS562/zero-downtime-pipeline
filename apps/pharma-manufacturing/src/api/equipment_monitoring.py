@@ -10,7 +10,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from src.models.manufacturing import Equipment, SensorReading, EquipmentStatus
-from src.services.equipment_service import EquipmentService
+from src.services.equipment_simulator import EquipmentSimulator
 from src.services.alert_manager import AlertManager
 
 router = APIRouter()
@@ -73,7 +73,7 @@ async def get_all_equipment(
     status: Optional[EquipmentStatus] = Query(None, description="Filter by equipment status"),
     equipment_type: Optional[str] = Query(None, description="Filter by equipment type"),
     location: Optional[str] = Query(None, description="Filter by location"),
-    equipment_service: EquipmentService = Depends()
+    equipment_service: EquipmentSimulator = Depends()
 ):
     """Get list of all manufacturing equipment with optional filtering"""
     try:
@@ -89,7 +89,7 @@ async def get_all_equipment(
 @router.get("/{equipment_id}", response_model=EquipmentResponse)
 async def get_equipment_details(
     equipment_id: UUID,
-    equipment_service: EquipmentService = Depends()
+    equipment_service: EquipmentSimulator = Depends()
 ):
     """Get detailed information about specific equipment"""
     try:
@@ -105,7 +105,7 @@ async def get_equipment_details(
 @router.get("/{equipment_id}/status")
 async def get_equipment_status(
     equipment_id: UUID,
-    equipment_service: EquipmentService = Depends()
+    equipment_service: EquipmentSimulator = Depends()
 ):
     """Get current operational status of equipment"""
     try:
@@ -122,7 +122,7 @@ async def get_equipment_status(
 async def update_equipment_status(
     equipment_id: UUID,
     status_update: EquipmentStatusUpdate,
-    equipment_service: EquipmentService = Depends()
+    equipment_service: EquipmentSimulator = Depends()
 ):
     """Update equipment operational status"""
     try:
@@ -151,7 +151,7 @@ async def get_equipment_sensor_readings(
     sensor_type: Optional[str] = Query(None, description="Filter by sensor type"),
     hours: int = Query(24, description="Number of hours of data to retrieve"),
     limit: int = Query(1000, description="Maximum number of readings to return"),
-    equipment_service: EquipmentService = Depends()
+    equipment_service: EquipmentSimulator = Depends()
 ):
     """Get sensor readings for specific equipment"""
     try:
@@ -170,7 +170,7 @@ async def get_equipment_sensor_readings(
 async def create_sensor_reading(
     equipment_id: UUID,
     sensor_reading: SensorReadingCreate,
-    equipment_service: EquipmentService = Depends(),
+    equipment_service: EquipmentSimulator = Depends(),
     alert_manager: AlertManager = Depends()
 ):
     """Record new sensor reading for equipment"""
@@ -202,7 +202,7 @@ async def create_sensor_reading(
 @router.get("/{equipment_id}/sensors/latest")
 async def get_latest_sensor_readings(
     equipment_id: UUID,
-    equipment_service: EquipmentService = Depends()
+    equipment_service: EquipmentSimulator = Depends()
 ):
     """Get latest sensor reading for each sensor type on equipment"""
     try:
@@ -218,7 +218,7 @@ async def get_latest_sensor_readings(
 @router.get("/{equipment_id}/parameters")
 async def get_equipment_parameters(
     equipment_id: UUID,
-    equipment_service: EquipmentService = Depends()
+    equipment_service: EquipmentSimulator = Depends()
 ):
     """Get current operating parameters for equipment"""
     try:
@@ -240,7 +240,7 @@ async def get_equipment_parameters(
 async def update_equipment_parameters(
     equipment_id: UUID,
     parameters_update: EquipmentParametersUpdate,
-    equipment_service: EquipmentService = Depends()
+    equipment_service: EquipmentSimulator = Depends()
 ):
     """Update operating parameters for equipment"""
     try:
@@ -265,7 +265,7 @@ async def update_equipment_parameters(
 @router.get("/{equipment_id}/maintenance")
 async def get_equipment_maintenance_info(
     equipment_id: UUID,
-    equipment_service: EquipmentService = Depends()
+    equipment_service: EquipmentSimulator = Depends()
 ):
     """Get maintenance and calibration information for equipment"""
     try:
@@ -282,7 +282,7 @@ async def get_equipment_maintenance_info(
 @router.get("/types/{equipment_type}/summary")
 async def get_equipment_type_summary(
     equipment_type: str,
-    equipment_service: EquipmentService = Depends()
+    equipment_service: EquipmentSimulator = Depends()
 ):
     """Get summary information for all equipment of a specific type"""
     try:
@@ -298,7 +298,7 @@ async def get_equipment_type_summary(
 @router.get("/sensors/out-of-spec")
 async def get_out_of_spec_sensors(
     hours: int = Query(24, description="Number of hours to check"),
-    equipment_service: EquipmentService = Depends()
+    equipment_service: EquipmentSimulator = Depends()
 ):
     """Get all sensor readings that are out of specification"""
     try:
@@ -316,7 +316,7 @@ async def get_out_of_spec_sensors(
 
 @router.get("/health/equipment-monitoring")
 async def equipment_monitoring_health_check(
-    equipment_service: EquipmentService = Depends()
+    equipment_service: EquipmentSimulator = Depends()
 ):
     """Health check endpoint for equipment monitoring system"""
     try:

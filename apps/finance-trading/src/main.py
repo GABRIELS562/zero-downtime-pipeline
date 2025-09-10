@@ -28,12 +28,12 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from src.api.health import health_router
 from src.api.trading import trading_router
 from src.api.metrics import metrics_router
-from middleware.latency_monitor import LatencyMiddleware
-from middleware.market_data_validator import MarketDataMiddleware
-from middleware.compliance_logger import ComplianceMiddleware
-from services.market_data_service import MarketDataService
-from services.order_processor import OrderProcessor
-from services.risk_manager import RiskManager
+from src.middleware.latency_monitor import LatencyMiddleware
+from src.middleware.market_data_validator import MarketDataMiddleware
+from src.middleware.compliance_logger import ComplianceMiddleware
+from src.services.market_data_service import MarketDataService
+from src.services.order_processor import OrderProcessor
+from src.services.risk_manager import RiskManager
 
 # Configure logging
 logging.basicConfig(

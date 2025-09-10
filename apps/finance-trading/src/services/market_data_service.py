@@ -14,7 +14,11 @@ import logging
 from dataclasses import dataclass
 
 import httpx
-from alpha_vantage.timeseries import TimeSeries
+try:
+    from alpha_vantage.timeseries import TimeSeries
+except ImportError:
+    print("Warning: alpha_vantage not available, using mock data")
+    TimeSeries = None
 from prometheus_client import Counter, Histogram, Gauge
 
 logger = logging.getLogger(__name__)
