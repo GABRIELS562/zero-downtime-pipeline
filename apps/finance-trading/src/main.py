@@ -25,9 +25,9 @@ import os
 # Add src to path for imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from api.health import health_router
-from api.trading import trading_router
-from api.metrics import metrics_router
+from src.api.health import health_router
+from src.api.trading import trading_router
+from src.api.metrics import metrics_router
 from middleware.latency_monitor import LatencyMiddleware
 from middleware.market_data_validator import MarketDataMiddleware
 from middleware.compliance_logger import ComplianceMiddleware
