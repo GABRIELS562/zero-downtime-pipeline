@@ -98,7 +98,14 @@ app.add_middleware(
 
 # Add custom middleware for GMP compliance
 app.add_middleware(GMPComplianceMiddleware)
-app.add_middleware(FDAValidationMiddleware)
+
+# Only add FDA validation middleware if enabled
+if FDA_VALIDATION_ENABLED.lower() == "true":
+    app.add_middleware(FDAValidationMiddleware)
+    logger.info("✅ FDA Validation Middleware: ENABLED")
+else:
+    logger.info("⚠️ FDA Validation Middleware: DISABLED")
+
 app.add_middleware(AuditTrailMiddleware)
 
 # Exception handlers
