@@ -67,5 +67,5 @@ ENV DATABASE_URL=sqlite:///app/pharma.db
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Start command with fallback to simple version if main fails
-CMD ["sh", "-c", "python -m uvicorn src.main:app --host 0.0.0.0 --port 8000 || python -m uvicorn src.main_simple:app --host 0.0.0.0 --port 8000"]
+# Start command using startup wrapper with automatic fallback
+CMD ["python", "-m", "uvicorn", "src.startup:app", "--host", "0.0.0.0", "--port", "8000"]

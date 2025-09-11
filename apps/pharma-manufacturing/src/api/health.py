@@ -3,7 +3,7 @@ Health Check API
 Zero-downtime health monitoring endpoints for pharmaceutical manufacturing
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import Dict, Any
 from datetime import datetime, timedelta
 from pydantic import BaseModel
