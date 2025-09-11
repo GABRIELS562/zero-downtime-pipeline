@@ -35,9 +35,9 @@ app.add_middleware(
 def root():
     """Root endpoint"""
     return {
-        "service": "Pharma Manufacturing (Simple)",
-        "status": "operational",
-        "version": "1.0.0-simple",
+        "service": "Pharma Manufacturing",
+        "status": "operational", 
+        "mode": "simple",
         "timestamp": datetime.utcnow().isoformat(),
         "documentation": "/api/docs"
     }
@@ -168,21 +168,8 @@ def docs_redirect():
 def get_batches():
     """Get manufacturing batches"""
     return {
-        "batches": [
-            {
-                "id": "BATCH001",
-                "status": "active",
-                "product": "Pharmaceutical Product A",
-                "created": datetime.utcnow().isoformat()
-            },
-            {
-                "id": "BATCH002", 
-                "status": "completed",
-                "product": "Pharmaceutical Product B",
-                "created": datetime.utcnow().isoformat()
-            }
-        ],
-        "total": 2
+        "batches": [], 
+        "message": "Database not configured, returning empty list"
     }
 
 # Simple equipment endpoint
@@ -190,21 +177,8 @@ def get_batches():
 def get_equipment():
     """Get equipment status"""
     return {
-        "equipment": [
-            {
-                "id": "EQ001",
-                "name": "Production Line 1",
-                "status": "operational",
-                "efficiency": 95.2
-            },
-            {
-                "id": "EQ002",
-                "name": "Quality Control Station",
-                "status": "operational", 
-                "efficiency": 97.8
-            }
-        ],
-        "total": 2
+        "equipment": [], 
+        "message": "Database not configured, returning empty list"
     }
 
 if __name__ == "__main__":

@@ -58,7 +58,7 @@ async def liveness_probe():
     """
     try:
         health_service = HealthService()
-        uptime = await health_service.get_uptime()
+        uptime = health_service.get_uptime()
         
         return LivenessResponse(
             status="alive",
@@ -79,7 +79,8 @@ async def readiness_probe(
     """
     try:
         # Check database connectivity
-        db_healthy = await db_manager.check_health()
+        db_health = db_manager.check_health()
+        db_healthy = db_health.get('status') == 'healthy'
         
         # Check all service health
         services_health = await health_service.check_all_services_health()

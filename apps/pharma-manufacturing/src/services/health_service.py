@@ -5,6 +5,7 @@ Monitors application and service health for pharmaceutical manufacturing
 
 import asyncio
 import logging
+import time
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List
 import psutil
@@ -16,7 +17,7 @@ class HealthService:
     
     def __init__(self):
         self.startup_time = datetime.now(timezone.utc)
-        self.start_time = self.startup_time.timestamp()
+        self.start_time = time.time()  # Use time.time() for simple uptime calculation
         self.initialization_complete = False
         self.services_ready = False
         logger.info("Health Service initialized")
@@ -110,9 +111,8 @@ class HealthService:
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
     
-    async def get_uptime(self) -> float:
+    def get_uptime(self) -> float:
         """Get application uptime in seconds"""
-        import time
         return time.time() - self.start_time
     
     async def check_manufacturing_services_health(self) -> Dict[str, str]:
