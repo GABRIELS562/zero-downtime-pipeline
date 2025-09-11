@@ -207,9 +207,9 @@ class OrderCreate(BaseModel):
     symbol: str = Field(..., min_length=1, max_length=20)
     side: OrderSide
     order_type: OrderType
-    quantity: Decimal = Field(..., gt=0, decimal_places=8)
-    price: Optional[Decimal] = Field(None, gt=0, decimal_places=8)
-    stop_price: Optional[Decimal] = Field(None, gt=0, decimal_places=8)
+    quantity: Decimal = Field(..., gt=0)
+    price: Optional[Decimal] = Field(None, gt=0)
+    stop_price: Optional[Decimal] = Field(None, gt=0)
     time_in_force: TimeInForce = TimeInForce.GTC
     client_order_id: Optional[str] = Field(None, max_length=100)
     

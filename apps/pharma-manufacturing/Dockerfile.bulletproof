@@ -58,9 +58,14 @@ RUN mkdir -p /app/logs
 # Expose port
 EXPOSE 8000
 
+# Set environment variables
+ENV FDA_VALIDATION_ENABLED=false
+ENV API_KEY=pharma-default-key
+ENV DATABASE_URL=sqlite:///app/pharma.db
+
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Start command
-CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]

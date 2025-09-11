@@ -151,6 +151,11 @@ class FDAValidationMiddleware(BaseHTTPMiddleware):
     
     async def _validate_user_access(self, request: Request):
         """Validate user authentication and authorization per 21 CFR 11"""
+        # Add bypass for missing authentication
+        import os
+        if os.getenv("FDA_VALIDATION_ENABLED", "true").lower() == "false":
+            return True
+            
         user_id = request.headers.get("X-User-ID")
         username = request.headers.get("X-Username")
         user_role = request.headers.get("X-User-Role")

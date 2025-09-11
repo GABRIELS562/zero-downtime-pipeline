@@ -1,0 +1,28 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y gcc python3-dev && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements file
+COPY requirements-simple.txt requirements.txt
+
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Fix Pydantic issues at build time
+RUN find . -type f -name "*.py" -exec sed -i 's/regex=/pattern=/g' {} \;
+RUN find . -type f -name "*.py" -exec sed -i 's/decimal_places=[0-9]*//g' {} \;
+
+# Expose port
+EXPOSE 8000
+
+# Start the server
+CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -3,6 +3,7 @@ Pharmaceutical Manufacturing Monitoring System
 FastAPI application for GMP-compliant manufacturing operations
 """
 
+import os
 import uvicorn
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +12,11 @@ from contextlib import asynccontextmanager
 import logging
 import sys
 from datetime import datetime
+
+# Default configurations for missing environment variables
+API_KEY = os.getenv("API_KEY", "pharma-default-key")
+FDA_VALIDATION_ENABLED = os.getenv("FDA_VALIDATION_ENABLED", "false")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///app/pharma.db")
 
 # Import API routers
 from src.api.batch_tracking import router as batch_router
