@@ -17,6 +17,10 @@ COPY . .
 # Set Python path
 ENV PYTHONPATH=/app
 
+# Set environment variables
+ENV ENVIRONMENT=production
+ENV PORT=8000
+
 # Expose port
 EXPOSE 8000
 
