@@ -4,10 +4,11 @@ Handles database connections and initialization for pharmaceutical manufacturing
 """
 
 import logging
-import asyncio
+import sqlite3
+import time
 from typing import Optional
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker, Session
 import os
 
 logger = logging.getLogger(__name__)
@@ -16,9 +17,10 @@ class DatabaseManager:
     """Manages database connections and operations"""
     
     def __init__(self):
-        self.engine: Optional[create_async_engine] = None
+        self.engine: Optional[create_engine] = None
         self.session_maker: Optional[sessionmaker] = None
         self.initialized = False
+        self.start_time = time.time()
     
     async def initialize(self):
         """Initialize database connection"""
@@ -26,25 +28,25 @@ class DatabaseManager:
             # Use environment variables or defaults for database connection
             database_url = os.getenv(
                 "DATABASE_URL", 
-                "sqlite+aiosqlite:///./pharma_manufacturing.db"
+                "sqlite:///./pharma_manufacturing.db"
             )
             
             logger.info(f"Initializing database connection to: {database_url.split('@')[-1] if '@' in database_url else database_url}")
             
-            self.engine = create_async_engine(
+            self.engine = create_engine(
                 database_url,
                 echo=os.getenv("DEBUG", "false").lower() == "true"
             )
             
             self.session_maker = sessionmaker(
                 bind=self.engine,
-                class_=AsyncSession,
+                class_=Session,
                 expire_on_commit=False
             )
             
             # Test connection
-            async with self.engine.begin() as conn:
-                await conn.execute("SELECT 1")
+            with self.engine.begin() as conn:
+                conn.execute(text("SELECT 1"))
             
             self.initialized = True
             logger.info("Database connection initialized successfully")
@@ -54,7 +56,7 @@ class DatabaseManager:
             # Don't raise - allow app to start in degraded mode
             self.initialized = False
     
-    async def get_session(self) -> AsyncSession:
+    def get_session(self) -> Session:
         """Get database session"""
         if not self.initialized:
             raise RuntimeError("Database not initialized")
@@ -64,17 +66,35 @@ class DatabaseManager:
     async def close(self):
         """Close database connections"""
         if self.engine:
-            await self.engine.dispose()
+            self.engine.dispose()
             logger.info("Database connections closed")
     
-    async def health_check(self) -> dict:
-        """Check database health"""
+    async def check_health(self) -> bool:
+        """Check database health - Returns boolean for readiness probe"""
         if not self.initialized:
-            return {"status": "unhealthy", "error": "Not initialized"}
+            return False
         
         try:
-            async with self.engine.begin() as conn:
-                await conn.execute("SELECT 1")
-            return {"status": "healthy", "database": "connected"}
+            with self.engine.begin() as conn:
+                conn.execute(text("SELECT 1"))
+            return True
         except Exception as e:
-            return {"status": "unhealthy", "error": str(e)}
+            logger.error(f"Database health check failed: {e}")
+            return False
+    
+    async def detailed_health_check(self) -> dict:
+        """Detailed health check - Returns detailed status"""
+        if not self.initialized:
+            return {"healthy": False, "status": "unhealthy", "error": "Not initialized"}
+        
+        try:
+            with self.engine.begin() as conn:
+                conn.execute(text("SELECT 1"))
+            return {
+                "healthy": True,
+                "status": "healthy", 
+                "database": "connected",
+                "uptime_seconds": time.time() - self.start_time
+            }
+        except Exception as e:
+            return {"healthy": False, "status": "unhealthy", "error": str(e)}

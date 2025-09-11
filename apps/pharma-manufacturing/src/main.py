@@ -55,6 +55,9 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     logger.info("🏭 Starting Pharmaceutical Manufacturing Monitoring System")
     
+    # Set startup flag to False initially
+    app.state.startup_complete = False
+    
     # Initialize database
     db_manager = DatabaseManager()
     await db_manager.initialize()
@@ -67,7 +70,9 @@ async def lifespan(app: FastAPI):
     equipment_simulator = EquipmentSimulator()
     await equipment_simulator.start()
     
-    logger.info("✅ All systems initialized successfully")
+    # Mark startup as complete
+    app.state.startup_complete = True
+    logger.info("✅ All systems initialized successfully - Startup complete")
     
     yield
     

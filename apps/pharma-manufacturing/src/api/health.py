@@ -107,6 +107,7 @@ async def readiness_probe(
 
 @router.get("/startup", response_model=StartupResponse)
 async def startup_probe(
+    request: Request,
     health_service: HealthService = Depends()
 ):
     """
@@ -114,7 +115,9 @@ async def startup_probe(
     Returns 200 when the application has completed initialization
     """
     try:
-        startup_status = await health_service.check_startup_status()
+        # Get app startup state from FastAPI app state
+        app_startup_complete = getattr(request.app.state, 'startup_complete', False)
+        startup_status = await health_service.check_startup_status(app_startup_complete)
         
         if not startup_status["initialization_complete"]:
             raise HTTPException(
