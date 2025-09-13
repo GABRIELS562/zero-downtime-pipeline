@@ -17,8 +17,8 @@ class DatabaseManager:
     """Manages database connections and operations - Fully Synchronous"""
     
     def __init__(self):
-        # Use synchronous SQLite
-        database_url = os.getenv("DATABASE_URL", "sqlite:///app/pharma.db")
+        # Use PostgreSQL in production, SQLite as fallback
+        database_url = os.getenv("DATABASE_URL", "postgresql://pharma_user:pharma_secure_pass_2024@postgresql.production.svc.cluster.local:5432/pharma_db")
         logger.info(f"Initializing database: {database_url}")
         
         self.engine = create_engine(database_url)

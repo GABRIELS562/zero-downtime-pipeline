@@ -55,15 +55,13 @@
                     </span>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <a href="http://localhost:30003" target="_blank" class="flex items-center px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 transition-colors">
+                    <a href="index.html" class="flex items-center px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 transition-colors">
                         <i class="fas fa-chart-line mr-2"></i>
-                        Trading App
-                        <i class="fas fa-external-link-alt ml-2 text-xs"></i>
+                        Trading Dashboard
                     </a>
-                    <a href="http://localhost:30002" target="_blank" class="flex items-center px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors">
+                    <a href="pharma-dashboard.html" class="flex items-center px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors">
                         <i class="fas fa-pills mr-2"></i>
-                        Pharma App
-                        <i class="fas fa-external-link-alt ml-2 text-xs"></i>
+                        Pharma Dashboard
                     </a>
                     <div class="text-sm text-gray-400">
                         <i class="fas fa-circle text-green-400 mr-1"></i>
@@ -113,21 +111,21 @@
                 <div class="bg-gray-700 rounded-lg p-4">
                     <h4 class="font-bold mb-2">External Services (Live APIs)</h4>
                     <div class="space-y-2">
-                        <a href="http://localhost:30003/docs" target="_blank" class="block text-purple-400 hover:text-purple-300">
-                            <i class="fas fa-code mr-2"></i>Trading API Docs
+                        <a href="http://localhost:8003/" target="_blank" class="block text-purple-400 hover:text-purple-300">
+                            <i class="fas fa-code mr-2"></i>Trading API (Port 8003)
                         </a>
-                        <a href="http://localhost:30002/docs" target="_blank" class="block text-blue-400 hover:text-blue-300">
-                            <i class="fas fa-code mr-2"></i>Pharma API Docs
+                        <a href="http://localhost:8002/" target="_blank" class="block text-blue-400 hover:text-blue-300">
+                            <i class="fas fa-code mr-2"></i>Pharma API (Port 8002)
                         </a>
                     </div>
                 </div>
                 <div class="bg-gray-700 rounded-lg p-4">
                     <h4 class="font-bold mb-2">Local Dashboard Views</h4>
                     <div class="space-y-2">
-                        <a href="/trading" class="block text-purple-400 hover:text-purple-300">
+                        <a href="index.html" class="block text-purple-400 hover:text-purple-300">
                             <i class="fas fa-chart-area mr-2"></i>Trading Dashboard UI
                         </a>
-                        <a href="/pharma" class="block text-blue-400 hover:text-blue-300">
+                        <a href="pharma-dashboard.html" class="block text-blue-400 hover:text-blue-300">
                             <i class="fas fa-industry mr-2"></i>Pharma Dashboard UI
                         </a>
                     </div>
@@ -142,7 +140,7 @@
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
             <!-- Finance Trading System -->
-            <a href="http://localhost:30003" class="card-hover block" target="_blank">
+            <a href="index.html" class="card-hover block">
                 <div class="bg-gray-800 rounded-lg overflow-hidden">
                     <div class="bg-gradient-to-r from-purple-600 to-blue-600 p-6">
                         <div class="flex items-center justify-between">
@@ -188,8 +186,8 @@
                         
                         <div class="flex items-center justify-between">
                             <span class="text-sm text-gray-400">
-                                <i class="fas fa-server mr-1"></i> 
-                                Port: 30003
+                                <i class="fas fa-server mr-1"></i>
+                                API Port: 8003
                             </span>
                             <span class="text-purple-400 font-bold">
                                 Open Trading App 
@@ -201,7 +199,7 @@
             </a>
 
             <!-- Pharmaceutical Manufacturing System -->
-            <a href="http://localhost:30002" class="card-hover block" target="_blank">
+            <a href="pharma-dashboard.html" class="card-hover block">
                 <div class="bg-gray-800 rounded-lg overflow-hidden">
                     <div class="bg-gradient-to-r from-blue-600 to-green-600 p-6">
                         <div class="flex items-center justify-between">
@@ -248,7 +246,7 @@
                         <div class="flex items-center justify-between">
                             <span class="text-sm text-gray-400">
                                 <i class="fas fa-server mr-1"></i> 
-                                Port: 30002
+                                API Port: 8002
                             </span>
                             <span class="text-blue-400 font-bold">
                                 Open Pharma App 

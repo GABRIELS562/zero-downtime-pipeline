@@ -1,0 +1,22 @@
+{
+  "name": "zero-downtime-pipeline",
+  "version": "1.0.0",
+  "description": "Zero-downtime deployment pipeline with pharma and trading apps",
+  "scripts": {
+    "dev": "concurrently \"npm:dev:*\"",
+    "dev:pharma": "cd apps/pharma-manufacturing && python app.py",
+    "dev:trading": "cd apps/finance-trading && python app.py",
+    "dev:dashboard": "cd frontend && python -m http.server 3005 --bind 0.0.0.0",
+    "start": "docker-compose up",
+    "stop": "docker-compose down",
+    "build": "docker-compose build",
+    "test": "./test-complete-data-flow.sh",
+    "metrics": "curl -s http://localhost:8002/metrics && curl -s http://localhost:8003/metrics"
+  },
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  },
+  "keywords": ["pharma", "trading", "zero-downtime", "prometheus", "metrics"],
+  "author": "",
+  "license": "MIT"
+}

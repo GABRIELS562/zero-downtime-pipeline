@@ -2,7 +2,7 @@
 // Real-time monitoring for FDA 21 CFR Part 11 compliant operations
 
 // Configuration
-const API_BASE = 'http://localhost:8090';
+const API_BASE = 'http://localhost:8002';  // Updated to correct Pharma API port
 const UPDATE_INTERVAL = 2000; // 2 seconds
 
 // Chart instances

@@ -1,0 +1,240 @@
+#!/usr/bin/env python3
+"""
+Zero-Downtime Trading Platform - Simple Flask Placeholder
+Provides a working API for the Trading app on port 8000
+"""
+
+from flask import Flask, jsonify, request, Response
+from flask_cors import CORS
+from datetime import datetime
+import os
+import random
+import time
+
+app = Flask(__name__)
+CORS(app)
+
+# Metrics storage for Prometheus
+order_latencies = []  # Store latencies for histogram
+order_counters = {
+    "executed": 0,
+    "pending": 0,
+    "failed": 0,
+    "cancelled": 0
+}
+
+# Simulated data
+trading_data = {
+    "service": "Zero-Downtime Trading Platform",
+    "status": "Demo Mode",
+    "latency": "< 10ms",
+    "version": "1.0.0",
+    "environment": os.getenv("ENVIRONMENT", "production")
+}
+
+# Simulated market data
+stocks = [
+    {"symbol": "AAPL", "name": "Apple Inc.", "price": 175.43, "change": 2.15},
+    {"symbol": "GOOGL", "name": "Alphabet Inc.", "price": 138.21, "change": -1.32},
+    {"symbol": "MSFT", "name": "Microsoft Corp.", "price": 378.91, "change": 3.48},
+    {"symbol": "AMZN", "name": "Amazon.com Inc.", "price": 145.32, "change": 0.87},
+    {"symbol": "TSLA", "name": "Tesla Inc.", "price": 242.64, "change": -5.21}
+]
+
+orders = []
+
+@app.route('/')
+def home():
+    """Root endpoint"""
+    start_time = time.time()
+    response = jsonify({
+        **trading_data,
+        "timestamp": datetime.utcnow().isoformat(),
+        "latency_ms": f"{(time.time() - start_time) * 1000:.2f}",
+        "endpoints": {
+            "health": "/health",
+            "live": "/health/live",
+            "ready": "/health/ready",
+            "market": "/api/v1/market",
+            "orders": "/api/v1/orders",
+            "metrics": "/metrics"
+        }
+    })
+    return response
+
+@app.route('/health')
+@app.route('/health/live')
+def health_live():
+    """Health check endpoint"""
+    start_time = time.time()
+    return jsonify({
+        "status": "healthy",
+        "service": "trading-platform",
+        "timestamp": datetime.utcnow().isoformat(),
+        "uptime": random.randint(1000, 10000),
+        "latency_ms": f"{(time.time() - start_time) * 1000:.2f}",
+        "market_connection": "active",
+        "order_engine": "running"
+    })
+
+@app.route('/health/ready')
+def health_ready():
+    """Readiness check endpoint"""
+    return jsonify({
+        "status": "ready",
+        "service": "trading-platform",
+        "timestamp": datetime.utcnow().isoformat(),
+        "initialized": True,
+        "market_data": "connected",
+        "order_system": "ready"
+    })
+
+@app.route('/api/v1/market')
+def get_market_data():
+    """Get current market data"""
+    # Simulate price fluctuations
+    for stock in stocks:
+        stock['price'] += random.uniform(-2, 2)
+        stock['change'] = random.uniform(-5, 5)
+
+    return jsonify({
+        "market": "US",
+        "status": "OPEN",
+        "stocks": stocks,
+        "timestamp": datetime.utcnow().isoformat(),
+        "update_frequency": "real-time"
+    })
+
+@app.route('/api/v1/market/<symbol>')
+def get_stock(symbol):
+    """Get specific stock information"""
+    stock = next((s for s in stocks if s["symbol"] == symbol), None)
+    if stock:
+        return jsonify({
+            **stock,
+            "volume": random.randint(1000000, 50000000),
+            "market_cap": f"${random.randint(100, 3000)}B",
+            "pe_ratio": f"{random.uniform(10, 35):.2f}",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+    return jsonify({"error": "Symbol not found"}), 404
+
+@app.route('/api/v1/orders', methods=['GET', 'POST'])
+def handle_orders():
+    """Handle order operations"""
+    global order_counters, order_latencies
+
+    if request.method == 'POST':
+        start_time = time.time()
+
+        # Simulate different order statuses (90% executed, 5% pending, 3% failed, 2% cancelled)
+        rand = random.random()
+        if rand < 0.90:
+            status = "EXECUTED"
+            order_counters["executed"] += 1
+        elif rand < 0.95:
+            status = "PENDING"
+            order_counters["pending"] += 1
+        elif rand < 0.98:
+            status = "FAILED"
+            order_counters["failed"] += 1
+        else:
+            status = "CANCELLED"
+            order_counters["cancelled"] += 1
+
+        execution_time = random.uniform(1, 10)
+        order_latencies.append(execution_time)
+
+        # Keep only last 100 latencies for histogram
+        if len(order_latencies) > 100:
+            order_latencies.pop(0)
+
+        order = {
+            "id": f"ORD-{random.randint(1000, 9999)}",
+            "timestamp": datetime.utcnow().isoformat(),
+            "status": status,
+            "execution_time_ms": f"{execution_time:.2f}",
+            **request.get_json()
+        }
+        orders.append(order)
+        return jsonify(order), 201
+
+    return jsonify({
+        "orders": orders[-10:],  # Last 10 orders
+        "total": len(orders),
+        "timestamp": datetime.utcnow().isoformat()
+    })
+
+@app.route('/api/v1/portfolio')
+def get_portfolio():
+    """Get portfolio information"""
+    portfolio_stocks = random.sample(stocks, 3)
+    return jsonify({
+        "total_value": f"${random.randint(10000, 1000000):,}",
+        "daily_change": f"{random.uniform(-2, 3):.2f}%",
+        "positions": [
+            {
+                **stock,
+                "shares": random.randint(10, 1000),
+                "value": f"${stock['price'] * random.randint(10, 1000):,.2f}"
+            }
+            for stock in portfolio_stocks
+        ],
+        "timestamp": datetime.utcnow().isoformat()
+    })
+
+@app.route('/metrics', methods=['GET'])
+def metrics():
+    """Prometheus-style metrics endpoint"""
+    metrics_text = f"""# HELP trading_orders_active Active trading orders
+# TYPE trading_orders_active gauge
+trading_orders_active {len(orders)}
+# HELP trading_latency_milliseconds Average trading latency
+# TYPE trading_latency_milliseconds gauge
+trading_latency_milliseconds {random.uniform(1, 10):.2f}
+# HELP trading_stock_price Current stock prices
+# TYPE trading_stock_price gauge
+trading_stock_price{{symbol="AAPL"}} {stocks[0]['price']:.2f}
+trading_stock_price{{symbol="GOOGL"}} {stocks[1]['price']:.2f}
+trading_stock_price{{symbol="MSFT"}} {stocks[2]['price']:.2f}
+# HELP trading_volume_per_second Trading volume per second
+# TYPE trading_volume_per_second gauge
+trading_volume_per_second {random.randint(100, 500)}
+# HELP trading_market_status Market status (1=open, 0=closed)
+# TYPE trading_market_status gauge
+trading_market_status 1
+"""
+    return Response(metrics_text, mimetype='text/plain', status=200)
+
+@app.route('/api/v1/system/info')
+def system_info():
+    """System information endpoint"""
+    return jsonify({
+        "platform": {
+            "name": "Zero-Downtime Trading Platform",
+            "version": "1.0.0",
+            "environment": os.getenv("ENVIRONMENT", "production")
+        },
+        "capabilities": {
+            "real_time_quotes": True,
+            "algorithmic_trading": True,
+            "risk_management": True,
+            "compliance_monitoring": True,
+            "high_frequency_trading": True
+        },
+        "performance": {
+            "avg_latency_ms": f"{random.uniform(1, 10):.2f}",
+            "orders_per_second": random.randint(1000, 5000),
+            "uptime_percentage": "99.99%"
+        },
+        "compliance": {
+            "sox_compliant": True,
+            "mifid_ii": True,
+            "reg_nms": True
+        },
+        "timestamp": datetime.utcnow().isoformat()
+    })
+
+if __name__ == '__main__':
+    port = int(os.getenv('PORT', 8000))
+    app.run(host='0.0.0.0', port=port, debug=False)
