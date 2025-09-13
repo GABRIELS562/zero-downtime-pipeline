@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/[YOUR-USERNAME]/zero-downtime-pipeline
+    repoURL: https://github.com/GABRIELS562/zero-downtime-pipeline
     targetRevision: main
     path: .
   destination:
