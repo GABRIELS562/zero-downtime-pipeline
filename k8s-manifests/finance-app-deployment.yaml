@@ -21,16 +21,16 @@ spec:
     spec:
       containers:
       - name: app
-        image: gabriels562/finance-trading:latest
+        image: localhost:5000/finance-app:production
         imagePullPolicy: Always
         ports:
-        - containerPort: 8080
+        - containerPort: 8000
           name: http
         env:
         - name: ENVIRONMENT
           value: "production"
         - name: PORT
-          value: "8080"
+          value: "8000"
         resources:
           requests:
             memory: "256Mi"
@@ -40,14 +40,14 @@ spec:
             cpu: "500m"
         livenessProbe:
           httpGet:
-            path: /
-            port: 8080
+            path: /health/live
+            port: 8000
           initialDelaySeconds: 30
           periodSeconds: 30
         readinessProbe:
           httpGet:
-            path: /
-            port: 8080
+            path: /health/ready
+            port: 8000
           initialDelaySeconds: 10
           periodSeconds: 10
 ---
@@ -61,8 +61,26 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 8080
-    targetPort: 8080
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: finance-app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: finance-app-nodeport
+  namespace: production
+  labels:
+    app: finance-app
+spec:
+  type: NodePort
+  ports:
+  - port: 8000
+    targetPort: 8000
+    nodePort: 30003
     protocol: TCP
     name: http
   selector:

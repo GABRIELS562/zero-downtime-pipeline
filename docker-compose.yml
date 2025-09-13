@@ -1,42 +1,62 @@
 version: '3.8'
 
 services:
-  # Frontend - serves all dashboards
-  frontend:
-    build: ./frontend
+  # Frontend Dashboard - serves all dashboards via Python HTTP server
+  dashboard:
+    image: python:3.11-slim
+    container_name: dashboard
+    working_dir: /app
+    volumes:
+      - ./frontend:/app:ro
     ports:
-      - "80:80"
+      - "8004:8004"
+    command: python -m http.server 8004 --bind 0.0.0.0
     networks:
       - app-network
     restart: unless-stopped
-
-  # Finance Trading Backend
-  finance-app:
-    build:
-      context: ./apps/finance-trading
-      dockerfile: Dockerfile.bulletproof
-    ports:
-      - "8080:8080"
-    environment:
-      - ENVIRONMENT=production
-      - PORT=8080
-    networks:
-      - app-network
-    restart: unless-stopped
+    depends_on:
+      - pharma-app
+      - trading-app
 
   # Pharma Manufacturing Backend
   pharma-app:
     build:
       context: ./apps/pharma-manufacturing
-      dockerfile: Dockerfile.bulletproof
+      dockerfile: Dockerfile.flask
+    container_name: pharma-app
     ports:
-      - "8000:8000"
+      - "8002:8000"
     environment:
       - ENVIRONMENT=production
       - PORT=8000
     networks:
       - app-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Finance Trading Backend
+  trading-app:
+    build:
+      context: ./apps/finance-trading
+      dockerfile: Dockerfile.flask
+    container_name: trading-app
+    ports:
+      - "8003:8000"
+    environment:
+      - ENVIRONMENT=production
+      - PORT=8000
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 networks:
   app-network:

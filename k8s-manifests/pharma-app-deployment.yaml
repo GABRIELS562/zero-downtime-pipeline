@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: gabriels562/pharma-manufacturing:latest
+        image: localhost:5000/pharma-app:production
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
@@ -31,6 +31,8 @@ spec:
           value: "production"
         - name: PORT
           value: "8000"
+        - name: DATABASE_URL
+          value: "postgresql://pharma_user:pharma_secure_pass_2024@postgresql.production.svc.cluster.local:5432/pharma_db"
         resources:
           requests:
             memory: "256Mi"
@@ -40,14 +42,14 @@ spec:
             cpu: "500m"
         livenessProbe:
           httpGet:
-            path: /api/health/live
+            path: /api/v1/health/live
             port: 8000
           initialDelaySeconds: 30
           periodSeconds: 30
           failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /api/health/ready
+            path: /api/v1/health/ready
             port: 8000
           initialDelaySeconds: 10
           periodSeconds: 10
@@ -65,6 +67,24 @@ spec:
   ports:
   - port: 8000
     targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: pharma-app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pharma-app-nodeport
+  namespace: production
+  labels:
+    app: pharma-app
+spec:
+  type: NodePort
+  ports:
+  - port: 8000
+    targetPort: 8000
+    nodePort: 30002
     protocol: TCP
     name: http
   selector:

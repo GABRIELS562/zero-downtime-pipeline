@@ -16,7 +16,8 @@ from datetime import datetime
 # Default configurations for missing environment variables
 API_KEY = os.getenv("API_KEY", "pharma-default-key")
 FDA_VALIDATION_ENABLED = os.getenv("FDA_VALIDATION_ENABLED", "false")
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///app/pharma.db")
+# Use PostgreSQL in Kubernetes production namespace
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://pharma_user:pharma_secure_pass_2024@postgresql.production.svc.cluster.local:5432/pharma_db")
 
 # Import API routers
 from src.api.batch_tracking import router as batch_router
