@@ -66,7 +66,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Zero-Downtime Trading Platform</title>
+        <title>Finance Trading System - SOX Compliant</title>
         <style>
             body {{
                 margin: 0;
@@ -215,7 +215,7 @@ def home():
     <body>
         <div class="container">
             <div class="header">
-                <h1>🚀 Zero-Downtime Trading Platform</h1>
+                <h1>🚀 Finance Trading System - SOX Compliant</h1>
                 <p><span class="status-indicator"></span>System Status: <span class="live-indicator">LIVE</span></p>
                 <p>Last Update: {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")} UTC</p>
             </div>
