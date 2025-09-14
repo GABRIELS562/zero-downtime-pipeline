@@ -4,9 +4,9 @@
   "description": "Zero-downtime deployment pipeline with pharma and trading apps",
   "scripts": {
     "dev": "concurrently \"npm:dev:*\"",
-    "dev:pharma": "cd apps/pharma-manufacturing && python app.py",
-    "dev:trading": "cd apps/finance-trading && python app.py",
-    "dev:dashboard": "cd frontend && python -m http.server 3005 --bind 0.0.0.0",
+    "dev:pharma": "cd apps/pharma-manufacturing && PORT=3006 python3 app.py",
+    "dev:trading": "cd apps/finance-trading && PORT=3007 python3 app.py",
+    "dev:dashboard": "cd frontend && python3 -m http.server 3005 --bind 0.0.0.0",
     "start": "docker-compose up",
     "stop": "docker-compose down",
     "build": "docker-compose build",
