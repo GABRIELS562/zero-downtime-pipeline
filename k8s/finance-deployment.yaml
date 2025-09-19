@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finance-app
+  namespace: production
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: finance-app
+  template:
+    metadata:
+      labels:
+        app: finance-app
+    spec:
+      containers:
+      - name: finance-app
+        image: localhost:5000/finance-app:v8
+        ports:
+        - containerPort: 8000
+        env:
+        - name: PORT
+          value: "8000"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: finance-app-service
+  namespace: production
+spec:
+  selector:
+    app: finance-app
+  ports:
+  - port: 8000
+    targetPort: 8000
