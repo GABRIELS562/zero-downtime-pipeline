@@ -1,0 +1,20 @@
+pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            steps {
+                sh 'docker build -t app:latest .'
+            }
+        }
+        stage('Push') {
+            steps {
+                sh 'docker push localhost:5000/app:latest'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sh 'kubectl set image deployment/app app=localhost:5000/app:latest'
+            }
+        }
+    }
+}

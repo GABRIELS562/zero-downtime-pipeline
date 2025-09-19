@@ -1,1 +1,0 @@
-"""Pharmaceutical Manufacturing Monitoring System - Core Package"""
