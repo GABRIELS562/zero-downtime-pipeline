@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pharma-app
+  namespace: production
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: pharma-app
+  template:
+    metadata:
+      labels:
+        app: pharma-app
+    spec:
+      containers:
+      - name: pharma-app
+        image: localhost:5000/pharma-app:latest
+        ports:
+        - containerPort: 8080
