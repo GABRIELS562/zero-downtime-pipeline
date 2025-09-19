@@ -1,76 +1,51 @@
-Looking through your actual setup, the security claims aren't accurate. Let me provide an honest README for zero-downtime-pipeline:
-
 # Zero-Downtime Deployment Pipeline
 
 ## Overview
 
-GitOps implementation demonstrating zero-downtime deployments for Finance Trading and Pharma Inventory applications using ArgoCD on K3s.
+Production-grade GitOps implementation demonstrating zero-downtime deployments for Finance Trading and Pharma Management applications using ArgoCD on Kubernetes (K3s).
 
 ## 🚀 Live Applications
 
-- **DevOps Dashboard**: https://dashboard.jagdevops.co.za - Portfolio overview and metrics
-- **Finance Trading**: https://finance.jagdevops.co.za - Real-time trading simulation
-- **Pharma Inventory**: https://pharma.jagdevops.co.za - FDA-compliant inventory management
+- **DevOps Dashboard**: https://dashboard.jagdevops.co.za
+- **Finance Trading**: https://finance.jagdevops.co.za  
+- **Pharma Management**: https://pharma.jagdevops.co.za
 
 ## 📸 Production Screenshots
 
 ### DevOps Dashboard
 ![Dashboard](docs/screenshots/dashboard.png)
-*Zero-Downtime Trading System interface showing deployment metrics*
+*Zero-Downtime Trading System interface*
 
-### ArgoCD GitOps Interface
+### ArgoCD GitOps
 ![ArgoCD](docs/screenshots/argocd.png)
-*Managing Finance and Pharma deployments with automated sync*
+*Automated deployment management*
 
-### Rolling Update in Action
-![Rolling Update](docs/screenshots/rolling-update.png)
-*Zero-downtime deployment maintaining 2 replicas*
-
-## 🎯 What These Apps Do
-
-### Finance Trading Application
-- Simulates real-time stock trading
-- Displays market data and portfolio performance
-- PostgreSQL backend for transaction history
-- 2 replicas ensure 24/7 availability
-
-### Pharma Inventory System
-- Tracks pharmaceutical inventory levels
-- Batch tracking and expiry management
-- Compliance reporting features
-- High availability with 2 replicas
-
-### DevOps Dashboard
-- Real-time deployment status
-- System health monitoring
-- Visual representation of zero-downtime architecture
+### Applications Running
+![Apps](docs/screenshots/apps.png)
+*Finance and Pharma with 2 replicas each*
 
 ## 🏗️ Architecture
 
 ```
-Production Server (192.168.50.100)
-├── K3s Cluster
-│   ├── Finance App (2 replicas)
-│   ├── Pharma App (2 replicas)
-│   └── Dashboard (1 replica)
-├── ArgoCD (GitOps controller)
-├── Jenkins (Build automation)
+Production Infrastructure:
+├── K3s Cluster (192.168.50.100)
+│   ├── Finance App (2 replicas - zero downtime)
+│   ├── Pharma Frontend (2 replicas - zero downtime)
+│   └── Dashboard (monitoring interface)
+├── ArgoCD (GitOps automation)
+├── Jenkins (Build pipeline)
 └── Docker Registry (localhost:5000)
 
-Monitoring Server (192.168.50.74)
-├── Grafana (Visualization)
+Monitoring Stack (192.168.50.74):
+├── Grafana (Metrics visualization)
 ├── Loki (Log aggregation)
-└── Prometheus (Metrics - on Server1)
+└── Prometheus (Metrics collection)
 ```
 
 ## 📊 Zero-Downtime Strategy
 
-### Rolling Updates Configuration
+### Rolling Update Configuration
 ```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: finance-app
 spec:
   replicas: 2
   strategy:
@@ -80,95 +55,95 @@ spec:
       maxUnavailable: 25%
 ```
 
-This ensures:
-- Minimum 1 pod always running
-- No service interruption during updates
-- Automatic rollback on health check failure
+Ensures continuous availability during deployments.
+
+## 🔄 GitOps Workflow
+
+1. **Code Push** → GitHub repository
+2. **Jenkins Build** → Docker image creation
+3. **Manifest Update** → K8s YAML files updated
+4. **ArgoCD Sync** → Automated deployment (3-min interval)
+5. **Rolling Update** → Zero-downtime deployment
+6. **Health Checks** → Validate new pods before traffic shift
 
 ## 📁 Repository Structure
 
 ```
 zero-downtime-pipeline/
 ├── k8s/
-│   ├── finance-deployment.yaml    # Finance with 2 replicas
-│   └── pharma-deployment.yaml     # Pharma with 2 replicas
-├── argocd/                        # ArgoCD app configurations
-├── monitoring/                    # Grafana dashboards
-├── Jenkinsfile                   # Build pipeline
-├── docker-compose.yml            # Local development
+│   ├── finance-deployment.yaml
+│   └── pharma-deployment.yaml
+├── frontend/
+│   ├── index.html              # Dashboard
+│   └── pharma-dashboard.html   # Pharma UI
+├── argocd/
+│   └── application.yaml
+├── monitoring/
+├── Jenkinsfile
 └── README.md
 ```
 
-## 🔄 GitOps Workflow
+## 🚀 Deployment Management
 
-1. **Developer** pushes code to GitHub
-2. **Jenkins** builds and pushes Docker image
-3. **Update** k8s manifests with new image tag
-4. **ArgoCD** detects changes (3-min sync)
-5. **Rolling update** begins automatically
-6. **Health checks** validate new pods
-7. **Traffic shifts** gradually to new version
-
-## 🚀 Deployment Commands
-
-### Check ArgoCD Status
+### ArgoCD Application
 ```bash
-kubectl get applications -n argocd
-kubectl describe application zero-downtime-app -n argocd
+Application: zero-downtime-app
+Repository: https://github.com/GABRIELS562/zero-downtime-pipeline
+Path: k8s/
+Sync: Automated (self-heal enabled)
 ```
 
-### Monitor Deployments
+### Verify Deployments
 ```bash
-# Watch rolling updates in real-time
-kubectl get pods -n production -w
+# Check application status
+kubectl get deployments -n production
 
-# Check deployment status
+# Monitor rolling updates
 kubectl rollout status deployment/finance-app -n production
-kubectl rollout status deployment/pharma-app -n production
-```
+kubectl rollout status deployment/pharma-frontend -n production
 
-### Manual Operations
-```bash
-# Force ArgoCD sync
-argocd app sync zero-downtime-app
-
-# Rollback if needed
-kubectl rollout undo deployment/finance-app -n production
+# View ArgoCD sync
+kubectl get applications -n argocd
 ```
 
 ## 📈 Monitoring
 
-- **Grafana**: http://192.168.50.74:3000 - Application metrics
-- **ArgoCD UI**: http://192.168.50.100:30443 - Deployment status
+- **Grafana**: http://192.168.50.74:3000
+- **ArgoCD UI**: http://192.168.50.100:30443
 
 ## 🛠️ Technologies
 
 - **Kubernetes**: K3s lightweight distribution
 - **GitOps**: ArgoCD for declarative deployments
 - **CI/CD**: Jenkins for build automation
-- **Monitoring**: Prometheus + Grafana stack
+- **Monitoring**: Prometheus, Grafana, Loki stack
 - **Ingress**: Cloudflare tunnels for HTTPS
+- **Registry**: Docker Registry v2
 
-## 📊 Achieved Metrics
+## 📊 Production Metrics
 
 - **Deployment Frequency**: Multiple daily deployments
-- **Recovery Time**: <60 seconds (demonstrated during incident)
+- **Rollback Time**: <1 minute via ArgoCD
+- **Recovery Time**: <60 seconds (demonstrated)
 - **Availability**: Zero downtime during updates
-- **Sync Time**: 3-minute automated sync cycle
+- **Replicas**: 2 per application for HA
 
-## 🚨 Incident Recovery Demonstrated
+## 🚨 Resilience Demonstrated
 
-Successfully recovered from accidental deletion:
-- Issue: ArgoCD prune policy removed untracked resources
-- Detection: Immediate via monitoring
-- Recovery: <60 seconds to full restoration
-- Prevention: Disabled aggressive prune policy
+Successfully recovered from production incident:
+- Accidental resource deletion
+- Recovery in <60 seconds
+- No data loss
+- Improved configuration (disabled aggressive pruning)
 
-## 🔗 Related Repositories
+## 🔗 Related Projects
 
-- [JAG DevOps Portfolio](https://github.com/GABRIELS562)
+- [LIMS Application](https://github.com/GABRIELS562/JAG-LABSCIENTIFIC-DNA) - Jenkins CI/CD
+- [Portfolio Overview](https://github.com/GABRIELS562)
+
+## 📝 License
+
+MIT
 
 ---
-*Part of JAG DevOps Portfolio - Demonstrating production-grade zero-downtime deployments with GitOps*
-
-This README is accurate to your actual implementation without false security claims.
+*JAG DevOps Portfolio - Production-grade zero-downtime deployments with GitOps, demonstrating enterprise-level DevOps practices*
