@@ -1,0 +1,10 @@
+# Mark vendor/library files
+*.html linguist-documentation
+docs/* linguist-documentation
+archive/* linguist-vendored
+
+# Set primary language
+*.yaml linguist-language=YAML
+*.yml linguist-language=YAML
+k8s/* linguist-language=YAML
+Jenkinsfile linguist-language=Groovy
