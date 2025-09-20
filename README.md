@@ -1,4 +1,4 @@
-markdown# 🔄 Zero-Downtime Deployment Pipeline
+🔄 Zero-Downtime Deployment Pipeline
 
 [![ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD-00D4AA)](http://192.168.50.100:30338)
 [![Jenkins](https://img.shields.io/badge/CI-Jenkins-D24939)](http://192.168.50.100:30080)
