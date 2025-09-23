@@ -1,45 +1,34 @@
 # Zero-Downtime Pipeline Screenshots
 
-This folder contains monitoring dashboards for the Finance and Pharma applications demonstrating production GitOps deployments with ArgoCD.
+Complete monitoring and deployment pipeline demonstration for Finance and Pharma applications.
 
-## Screenshot Overview
+## Production Monitoring Dashboards
 
-### Finance Application Monitoring
-- **01-finance-activity-logs.png** - Real-time AAPL trading activity logs with FINANCE_MONITOR labels
-- **02-finance-stock-metrics.png** - Stock price monitoring dashboard showing consistent data flow
-- **03-finance-request-rate.png** - Extended time view of request patterns and system stability
+### Finance Application
+- **01-finance-activity-logs.png** - Real-time AAPL trading logs with FINANCE_MONITOR labels
+- **03-finance-request-rate.png .png** - AAPL stock price monitoring with consistent data flow
 
-### Pharma Application Monitoring  
-- **04-pharma-equipment-logs.png** - Reactor equipment monitoring with PHARMA_MONITOR operations
-- **05-pharma-processing-debug.png** - Processing rate dashboard showing backend API integration in progress
+### Pharma Application  
+- **04-pharma-equipment-logs.png .png** - Reactor operations with PHARMA_MONITOR logging
+- **05-pharma-processing-debug.png** - Processing dashboard showing API integration in progress
+
+## GitOps Deployment Pipeline
+- **Argocd-.png** - ArgoCD managing finance-app and pharma-app deployments
+- **Jenkins-build-1.png** - Jenkins build #27 successful execution
+- **Jenkins-build-2.png** - Pipeline completion with ArgoCD sync integration
+
+## Technical Stack Demonstrated
+- **Monitoring**: Prometheus + Grafana + Loki log aggregation
+- **GitOps**: ArgoCD automated deployment management  
+- **CI/CD**: Jenkins pipeline with GitHub integration
+- **Infrastructure**: Kubernetes (K3s) high availability deployment
 
 ## System Status
+**Production Ready:**
+- Finance Trading System with real AAPL data processing
+- Complete GitOps pipeline from Jenkins to ArgoCD sync
 
-### Production Ready
-- **Finance Trading System**: Full monitoring stack operational
-  - Real-time AAPL trading data processing
-  - Consistent request rate monitoring  
-  - Complete log aggregation via Loki
+**Development in Progress:**
+- Pharma processing API integration (demonstrates troubleshooting workflow)
 
-### Development in Progress
-- **Pharma Manufacturing System**: Equipment monitoring operational
-  - Reactor operations logging functional
-  - Processing rate API integration pending
-  - Demonstrates active troubleshooting workflow
-
-## Technical Implementation
-
-- **Log Collection**: Promtail → Loki → Grafana
-- **Monitoring Stack**: Prometheus + Grafana dashboards
-- **Deployment**: ArgoCD GitOps automation
-- **Infrastructure**: Kubernetes (K3s) with high availability
-
-## Key Demonstrables
-
-1. **Multi-application monitoring** across different business domains
-2. **Real production data** processing and visualization
-3. **GitOps deployment patterns** with ArgoCD
-4. **Troubleshooting processes** in live environments
-5. **Log aggregation** from distributed microservices
-
-This represents a realistic production environment where multiple applications are at different stages of development and monitoring maturity.
+This showcases a complete DevOps pipeline from code commit to production monitoring with real GitOps automation.
