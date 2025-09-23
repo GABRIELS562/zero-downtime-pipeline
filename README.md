@@ -1,170 +1,177 @@
-🔄 Zero-Downtime Deployment Pipeline
+# 🔄 Zero-Downtime Deployment Pipeline
 
 [![ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD-00D4AA)](http://192.168.50.100:30338)
 [![Jenkins](https://img.shields.io/badge/CI-Jenkins-D24939)](http://192.168.50.100:30080)
 [![K3s](https://img.shields.io/badge/Platform-K3s-blue)](http://192.168.50.100)
 [![Status](https://img.shields.io/badge/Status-Production-success)]()
 
-Production-grade GitOps implementation achieving TRUE zero-downtime deployments for financial trading and pharmaceutical manufacturing systems.
+Production GitOps pipeline demonstrating automated deployment management for financial trading and pharmaceutical manufacturing applications using ArgoCD and Jenkins.
 
 ## 🚀 Live Production Applications
 
-| Application | URL | Status | Replicas | Uptime |
-|------------|-----|--------|----------|---------|
-| **Finance Trading API** | https://finance.jagdevops.co.za | ✅ Operational | 2 | 100% |
-| **Pharma Manufacturing** | https://pharma.jagdevops.co.za | ✅ Operational | 2 | 100% |
-| **Pharma Frontend UI** | Integrated with Pharma | ✅ Operational | 2 | 100% |
+| Application | URL | Status | Replicas | Management |
+|------------|-----|--------|----------|------------|
+| **Finance Trading** | [finance.jagdevops.co.za](https://finance.jagdevops.co.za) | ✅ Operational | 2/2 | ArgoCD |
+| **Pharma Manufacturing** | [pharma.jagdevops.co.za](https://pharma.jagdevops.co.za) | ✅ Operational | 2/2 | ArgoCD |
+| **Pharma Frontend** | Integrated | ✅ Operational | 2/2 | ArgoCD |
 
-## 📸 Screenshots
+## 📸 Production Monitoring & GitOps
 
-### GitOps Management
-![ArgoCD Sync](docs/screenshots/argocd-sync.png)
-*ArgoCD managing zero-downtime deployments with automated sync*
+### Application Monitoring
+![Finance Activity](images/01-finance-activity-logs.png)
+*Real-time AAPL trading logs with FINANCE_MONITOR labels*
 
-### Rolling Update in Action
-![Zero Downtime](docs/screenshots/rolling-update.png)
-*2 replicas always running during deployments*
+![Finance Request Rate](images/03-finance-request-rate.png%20.png)
+*Stock price monitoring dashboard with consistent data flow*
 
-### Application Interfaces
-![Finance Trading](docs/screenshots/finance-app.png)
-*Real-time trading platform interface*
+![Pharma Equipment Logs](images/04-pharma-equipment-logs.png%20.png)
+*Reactor operations monitoring with PHARMA_MONITOR logging*
 
-## 🏗️ Zero-Downtime Architecture
+![Pharma Processing Debug](images/05-pharma-processing-debug.png)
+*Processing rate dashboard - API integration in progress*
 
-### Production Deployment State
+### GitOps Pipeline
+![ArgoCD Deployment](images/Argocd-.png)
+*ArgoCD managing finance-app and pharma-app deployments*
+
+![Jenkins Pipeline](images/Jenkins-build-1.png)
+*Jenkins build #27 successful execution*
+
+![Jenkins ArgoCD Sync](images/Jenkins-build-2.png)
+*Pipeline completion with ArgoCD sync integration*
+
+## 🏗️ Production Architecture
+
+### Current Deployment State
 ```bash
-NAME               READY   REPLICAS
-finance-app        2/2     2         # Always 2 pods running
-pharma-app         2/2     2         # Always 2 pods running  
-pharma-frontend    2/2     2         # Always 2 pods running
-finance-postgres   1/1     1         # Database backend
-Rolling Update Strategy
-yamlspec:
-  replicas: 2
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1          # New pod created before old removed
-      maxUnavailable: 0    # NEVER drops below 2 replicas
-GitOps Workflow
-mermaidgraph LR
-    A[Git Push] --> B[GitHub]
-    B --> C[ArgoCD Polls]
-    C --> D[Detect Changes]
-    D --> E[Rolling Update]
-    E --> F[Health Check]
-    F --> G[Traffic Switch]
-    G --> H[Old Pod Removed]
-📊 Production Metrics
-MetricTargetAchievedProofAvailability During Deploy100%100%2 replicas maintainedDeployment Success Rate99.5%99.8%ArgoCD historyRecovery Time (RTO)<3 min<60 secIncident on 2025-09-19Rollback Time<1 min45 secArgoCD rollbackPod Start Time<30 sec15 secHealth checks pass
-🛠️ Technical Implementation
-Application Stack
-Finance Trading System
+# Verified pod status (3+ days uptime)
+finance-app-56495469d6-b84tx      2/2     Running   3d10h
+finance-app-56495469d6-zsb5b      2/2     Running   3d10h
+pharma-app-67446f5dd9-8dx87       2/2     Running   3d10h
+pharma-app-67446f5dd9-wbdjm       2/2     Running   3d10h
+pharma-frontend-7fdd56f4ff-9h92k  2/2     Running   3d10h
+pharma-frontend-7fdd56f4ff-ggwsc  2/2     Running   3d10h
+```
 
-Backend: Python FastAPI
-Database: PostgreSQL 14
-Features: Real-time trading, portfolio management, risk analytics
-Endpoints: /api/trades, /api/portfolio, /api/analytics
+### GitOps Workflow
+```mermaid
+graph LR
+    A[Code Push] --> B[GitHub]
+    B --> C[Jenkins Build]
+    C --> D[Update Manifests]
+    D --> E[ArgoCD Sync]
+    E --> F[Rolling Update]
+    F --> G[Health Check]
+```
 
-Pharma Manufacturing System
+## 🛠️ Technical Implementation
 
-Backend: Python Flask
-Frontend: React (pharma-frontend)
-Features: FDA 21 CFR Part 11 compliance, batch tracking, GMP validation
-Endpoints: /api/v1/batches, /api/v1/compliance
+### Application Stack
+**Finance Trading System:**
+- Real-time AAPL trading data processing
+- Monitoring via FINANCE_MONITOR logs
+- 2-replica high availability deployment
 
-Infrastructure Stack
+**Pharma Manufacturing System:**
+- Reactor operations monitoring (working)
+- Equipment logs via PHARMA_MONITOR
+- Processing API integration in development
 
-GitOps: ArgoCD v2.8 (auto-sync enabled)
-Container Platform: K3s v1.28
-CI Pipeline: Jenkins 2.4
-Registry: Docker Registry v2 (localhost:5000)
-Monitoring: Prometheus + Grafana + Loki
-DNS/SSL: Cloudflare Tunnels
+### Infrastructure Components
+- **GitOps**: ArgoCD v3.1 with auto-sync enabled
+- **CI/CD**: Jenkins 2.5 with GitHub integration  
+- **Platform**: Kubernetes (K3s) cluster
+- **Monitoring**: Prometheus + Grafana + Loki stack
+- **Registry**: Local Docker registry (localhost:5000)
 
-📁 Repository Structure
-zero-downtime-pipeline/
-├── apps/
-│   ├── finance-trading/
-│   │   ├── src/
-│   │   │   ├── main.py           # FastAPI application
-│   │   │   ├── models/           # Data models
-│   │   │   └── api/              # API endpoints
-│   │   ├── Dockerfile
-│   │   └── requirements.txt
-│   └── pharma-manufacturing/
-│       ├── src/
-│       │   ├── app.py            # Flask application
-│       │   ├── templates/        # Frontend templates
-│       │   └── static/           # Static assets
-│       ├── Dockerfile
-│       └── requirements.txt
-├── k8s/
-│   ├── finance-deployment.yaml   # 2 replicas, rolling update
-│   └── pharma-deployment.yaml    # 2 replicas, rolling update
-├── frontend/
-│   ├── index.html                # Dashboard (optional)
-│   └── pharma-dashboard.html     # Pharma UI
-├── health-checks/                # Application validators
-├── monitoring/                    # Prometheus configs
-├── Jenkinsfile                   # CI pipeline
-└── README.md
-🔄 Deployment Commands
-Trigger Deployment
-bash# Via Git push (recommended)
-cd ~/zero-downtime-pipeline
-git add . && git commit -m "Update" && git push
+## 📊 Production Monitoring
 
-# Manual ArgoCD sync
+### Working Systems
+- **Finance Application**: Full monitoring operational with real trading data
+- **Pharma Equipment**: Reactor monitoring and logging functional  
+- **GitOps Pipeline**: Jenkins to ArgoCD automation verified
+
+### Development Areas
+- **Pharma Processing API**: Backend integration in progress
+- **Demonstrates realistic production environment** with mixed system maturity
+
+## 🔄 Deployment Process
+
+### Automated GitOps Flow
+1. **Code Push** → Triggers Jenkins pipeline
+2. **Jenkins Build** → Updates Kubernetes manifests 
+3. **ArgoCD Detection** → Auto-sync within 3 minutes
+4. **Rolling Update** → Maintains 2 replicas throughout
+5. **Health Checks** → Validates deployment success
+
+### Manual Commands
+```bash
+# Trigger ArgoCD sync
 argocd app sync zero-downtime-app
 
-# Direct image update (for testing)
-kubectl set image deployment/finance-app finance-app=localhost:5000/finance-app:v9 -n production
-Verify Zero-Downtime
-bash# Watch pods during deployment - NEVER drops below 2
-watch 'kubectl get pods -n production | grep -E "finance|pharma"'
+# Watch deployment progress
+kubectl get pods -n production -w
 
-# Check rollout status
+# Check application status
 kubectl rollout status deployment/finance-app -n production
 kubectl rollout status deployment/pharma-app -n production
-kubectl rollout status deployment/pharma-frontend -n production
-📈 Real Incident Recovery
-Production Incident (2025-09-19 21:00 UTC)
-Event: Accidental deletion of pharma deployment
-Detection: <10 seconds (ArgoCD drift detection)
-Action: Automatic self-healing triggered
-Recovery: 45 seconds (2 replicas restored)
-Downtime: ZERO (finance continued serving)
-Learning: Disabled aggressive pruning in ArgoCD
-🚀 Quick Start
-Deploy New Version
-bash# 1. Update code
-cd ~/zero-downtime-pipeline/apps/finance-trading
-# Make changes to src/main.py
+```
 
-# 2. Build and push (optional - if not using Jenkins)
-docker build -t localhost:5000/finance-app:v10 .
-docker push localhost:5000/finance-app:v10
+## 📈 System Metrics
 
-# 3. Update manifest
-sed -i 's/v9/v10/g' ../../k8s/finance-deployment.yaml
+| Metric | Value | Evidence |
+|--------|-------|----------|
+| **Application Uptime** | 3+ days | Pod status verification |
+| **Deployment Method** | Rolling Update | 2-replica strategy |
+| **GitOps Integration** | Active | Jenkins → ArgoCD automation |
+| **Monitoring Coverage** | Multi-app | Finance + Pharma dashboards |
 
-# 4. Push to Git
-git add . && git commit -m "Update finance to v10" && git push
+## 🎯 Key Demonstrables
 
-# 5. Watch ArgoCD auto-deploy (3 min max)
-argocd app get zero-downtime-app --refresh
-📊 Comparison with LIMS
-AspectZero-Downtime PipelineLIMS SystemReplicas2 (HA)1Deployment ToolArgoCD (GitOps)Jenkins (Direct)StrategyRolling UpdateRecreateDowntimeZero<30 secondsTech StackPython/FastAPI/FlaskNode.js/React
-🎯 Key Achievements
+✅ **Multi-Application GitOps** - Single ArgoCD managing finance and pharma apps  
+✅ **Production Monitoring** - Real trading data and equipment logging  
+✅ **CI/CD Integration** - Jenkins to ArgoCD automated pipeline  
+✅ **High Availability** - 2-replica deployments maintained  
+✅ **Troubleshooting** - Shows realistic development/debug scenarios  
 
-✅ TRUE Zero-Downtime: Not marketing speak - actual 2+ replicas always running
-✅ GitOps Best Practice: Declarative, version-controlled deployments
-✅ Production Tested: Survived and recovered from real incident
-✅ Multi-App Management: Single ArgoCD instance managing multiple apps
-✅ Compliance Ready: FDA 21 CFR Part 11 for pharma, SOX for finance
+## 📁 Repository Structure
 
-📝 License
-MIT
+```
+zero-downtime-pipeline/
+├── images/                       # Screenshots and monitoring dashboards
+│   ├── 01-finance-activity-logs.png
+│   ├── 03-finance-request-rate.png .png
+│   ├── 04-pharma-equipment-logs.png .png
+│   ├── 05-pharma-processing-debug.png
+│   ├── Argocd-.png
+│   ├── Jenkins-build-1.png
+│   ├── Jenkins-build-2.png
+│   └── README.md
+├── k8s/                          # Kubernetes deployment manifests
+├── apps/                         # Application source code
+└── README.md                     # This file
+```
 
-Part of the JAG DevOps Portfolio - Demonstrating enterprise-grade zero-downtime deployments with production GitOps
+## 🚀 Quick Start
+
+### Deploy via GitOps
+```bash
+# Clone repository
+git clone https://github.com/GABRIELS562/zero-downtime-pipeline.git
+cd zero-downtime-pipeline
+
+# Make changes and push (triggers Jenkins)
+git add . && git commit -m "Update application"
+git push origin main
+
+# ArgoCD will automatically sync within 3 minutes
+```
+
+### Access Monitoring
+- **Grafana Dashboards**: http://192.168.50.74:3000
+- **ArgoCD Interface**: http://192.168.50.100:30338
+- **Jenkins Pipeline**: http://192.168.50.100:30080
+
+## 📝 License
+
+MIT License - Part of the JAG DevOps Portfolio demonstrating production GitOps automation with real application monitoring and troubleshooting workflows.
